@@ -15,7 +15,7 @@ fn main() {
     let duplicates = detect_duplicates(&args);
 
     // 根据格式输出结果
-    if let Err(e) = write_output(&duplicates, &args.output_format.as_str()) {
+    if let Err(e) = write_output(&duplicates, &args.output_format.as_str(), args.output_file.as_deref()) {
         eprintln!("Failed to write output: {}", e);
     }
 }

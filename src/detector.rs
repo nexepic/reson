@@ -36,7 +36,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
 
     fingerprints
         .into_iter()
-        .filter(|(_, blocks)| blocks.len() > 1)
+        .filter(|(_, blocks)| blocks.len() > 1 && (blocks[0].end_line_number - blocks[0].start_line_number + 1) >= args.threshold)
         .map(|(fingerprint, blocks)| DuplicateReport {
             fingerprint,
             line_count: blocks[0].end_line_number - blocks[0].start_line_number + 1,

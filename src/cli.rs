@@ -5,6 +5,8 @@ pub struct CliArgs {
     pub source_path: PathBuf,
     pub excludes: Vec<String>,
     pub output_format: String,
+    pub output_file: Option<PathBuf>,
+    pub threshold: usize,
 }
 
 impl CliArgs {
@@ -37,6 +39,21 @@ impl CliArgs {
                     .help("Output format (e.g., json)")
                     .default_value("json"),
             )
+            .arg(
+                Arg::new("output-file")
+                    .short('f')
+                    .long("output-file")
+                    .value_name("FILE")
+                    .help("File to write the output to"),
+            )
+            .arg(
+                Arg::new("threshold")
+                    .short('t')
+                    .long("threshold")
+                    .value_name("THRESHOLD")
+                    .help("Minimum number of lines to consider as duplicate")
+                    .default_value("5"),
+            )
             .get_matches();
 
         Self {
@@ -49,6 +66,12 @@ impl CliArgs {
                 .get_one::<String>("output-format")
                 .unwrap()
                 .to_string(),
+            output_file: matches.get_one::<String>("output-file").map(PathBuf::from),
+            threshold: matches
+                .get_one::<String>("threshold")
+                .unwrap()
+                .parse()
+                .unwrap(),
         }
     }
 }
