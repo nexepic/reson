@@ -46,8 +46,8 @@ fn traverse_tree(cursor: &mut tree_sitter::TreeCursor, source: &str, code_blocks
         if node.is_named() {
             let start_byte = node.start_byte();
             let end_byte = node.end_byte();
-            let start_line = node.start_position().row;
-            let end_line = node.end_position().row;
+            let start_line = node.start_position().row + 1; // increase line number by 1
+            let end_line = node.end_position().row + 1; // increase line number by 1
             let content = source[start_byte..end_byte].to_string();
 
             code_blocks.push(CodeBlock {
