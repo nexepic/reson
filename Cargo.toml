@@ -1,0 +1,17 @@
+[package]
+name = "resoync"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] } # 用于序列化和反序列化JSON
+serde_json = "1.0"        # 用于生成JSON输出
+glob = "0.3"              # 支持文件和目录的Glob匹配
+tree-sitter = "0.20"      # Tree-sitter核心库
+tree-sitter-c = "0.20"    # 支持C语言
+tree-sitter-java = "0.20" # 支持Java语言
+tree-sitter-python = "0.20" # 支持Python语言
+clap = { version = "4.5.23", features = ["derive"] }
+sha2 = "0.10.8"
