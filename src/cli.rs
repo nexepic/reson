@@ -1,12 +1,15 @@
-use clap::{Arg, Command};
+use clap::{Arg, Command, Parser};
 use std::path::PathBuf;
 
+#[derive(Parser)]
 pub struct CliArgs {
     pub source_path: PathBuf,
     pub excludes: Vec<String>,
     pub output_format: String,
     pub output_file: Option<PathBuf>,
     pub threshold: usize,
+    #[clap(long)]
+    pub debug: bool,
 }
 
 impl CliArgs {
@@ -54,6 +57,12 @@ impl CliArgs {
                     .help("Minimum number of lines to consider as duplicate")
                     .default_value("5"),
             )
+            .arg(
+                Arg::new("debug")
+                    .long("debug")
+                    .help("Enable debug mode")
+                    .action(clap::ArgAction::SetTrue), // Set the action to SetTrue for a flag
+            )
             .get_matches();
 
         Self {
@@ -72,6 +81,7 @@ impl CliArgs {
                 .unwrap()
                 .parse()
                 .unwrap(),
+            debug: *matches.get_one::<bool>("debug").unwrap_or(&false), // Get the flag value
         }
     }
 }
