@@ -1,1 +1,1 @@
-pub mod tree_sitter;
+pub mod ast_parser;
