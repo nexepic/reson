@@ -34,18 +34,23 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
     for file in files {
         if let Ok((blocks, tree, source_code)) = parse_file(&file) {
             for block in blocks {
-                log::debug!("Original content before fingerprinting: {}", block.content);
-                let fingerprint = compute_fingerprint(&block.content);
-                log::debug!("After fingerprinting: {}", fingerprint);
-                fingerprints.entry(fingerprint.clone()).or_default().push(DuplicateBlock {
-                    start_line_number: block.start_line,
-                    end_line_number: block.end_line,
-                    source_file: file.to_string_lossy().to_string(),
-                });
-
-                // Check if the block length exceeds the threshold
+                log::debug!(
+                    "Processing block: start_line={}, end_line={}, content={}",
+                    block.start_line,
+                    block.end_line,
+                    block.content
+                );
                 let block_length = block.end_line - block.start_line + 1;
                 if block_length >= args.threshold {
+                    log::debug!("Original content before fingerprinting: {}", block.content);
+                    let fingerprint = compute_fingerprint(&block.content);
+                    log::debug!("After fingerprinting: {}", fingerprint);
+                    fingerprints.entry(fingerprint.clone()).or_default().push(DuplicateBlock {
+                        start_line_number: block.start_line,
+                        end_line_number: block.end_line,
+                        source_file: file.to_string_lossy().to_string(),
+                    });
+    
                     let mut cursor = tree.walk();
                     while cursor.node().start_byte() != block.start_byte {
                         if !cursor.goto_first_child() {
@@ -56,7 +61,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
                             }
                         }
                     }
-
+    
                     // Get the parent node's content
                     if let Some(parent_content) = get_parent_content(&cursor, &source_code) {
                         let parent_fingerprint = compute_fingerprint(&parent_content);
@@ -67,7 +72,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
                                 content: parent_content.clone(),
                             },
                         );
-
+    
                         // Log the parent node's content
                         log::debug!(
                             "Block exceeds threshold: start_line={}, end_line={}, content={}, parent_content={}, fingerprint={}, parent_fingerprint={}",
