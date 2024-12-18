@@ -24,7 +24,8 @@ pub fn filter_files(source_path: &Path, excludes: &[String]) -> Vec<PathBuf> {
 pub fn compute_fingerprint(content: &str) -> String {
     use sha2::{Sha256, Digest};
     let mut hasher = Sha256::new();
-    hasher.update(content);
+    let trimmed_content = content.trim();
+    hasher.update(trimmed_content);
     format!("{:x}", hasher.finalize())
 }
 
