@@ -1,10 +1,9 @@
 use crate::parser::ast_parser::{parse_file, get_parent_content};
 use crate::utils::{filter_files, compute_fingerprint};
 use serde::Serialize;
-use std::collections::{HashMap};
+use std::collections::{HashMap, BTreeSet};
 use std::fs::File;
 use std::io::Write;
-use std::collections::BTreeSet;
 
 #[derive(Serialize, Debug)]
 pub struct DuplicateBlock {
@@ -92,16 +91,18 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
         }
     }
 
-    // Save parent_fingerprints to a local file
-    if let Ok(json) = serde_json::to_string_pretty(&parent_fingerprints) {
-        let mut file = File::create("parent_fingerprints.json").expect("Failed to create file");
-        file.write_all(json.as_bytes()).expect("Failed to write to file");
-    }
+    // Save parent_fingerprints to a local file if debug mode is enabled
+    if args.debug {
+        if let Ok(json) = serde_json::to_string_pretty(&parent_fingerprints) {
+            let mut file = File::create("parent_fingerprints.json").expect("Failed to create file");
+            file.write_all(json.as_bytes()).expect("Failed to write to file");
+        }
 
-    // Save exceeding_threshold_fingerprints to a local file
-    if let Ok(json) = serde_json::to_string_pretty(&exceeding_threshold_fingerprints) {
-        let mut file = File::create("exceeding_threshold_fingerprints.json").expect("Failed to create file");
-        file.write_all(json.as_bytes()).expect("Failed to write to file");
+        // Save exceeding_threshold_fingerprints to a local file if debug mode is enabled
+        if let Ok(json) = serde_json::to_string_pretty(&exceeding_threshold_fingerprints) {
+            let mut file = File::create("exceeding_threshold_fingerprints.json").expect("Failed to create file");
+            file.write_all(json.as_bytes()).expect("Failed to write to file");
+        }
     }
 
     fingerprints
