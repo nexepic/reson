@@ -7,7 +7,7 @@ use std::fs;
 #[derive(Debug)]
 pub struct CodeBlock {
     pub start_byte: usize,
-    pub end_byte: usize,
+    // pub end_byte: usize,
     pub start_line: usize,
     pub end_line: usize,
     pub content: String,
@@ -37,12 +37,12 @@ fn extract_code_blocks(tree: Tree, source: &str) -> Result<Vec<CodeBlock>, Strin
     let mut cursor = tree.walk();
     let mut code_blocks = Vec::new();
 
-    traverse_tree(&mut cursor, source, &mut code_blocks, None);
+    traverse_tree(&mut cursor, source, &mut code_blocks);
 
     Ok(code_blocks)
 }
 
-fn traverse_tree(cursor: &mut tree_sitter::TreeCursor, source: &str, code_blocks: &mut Vec<CodeBlock>, parent_content: Option<String>) {
+fn traverse_tree(cursor: &mut tree_sitter::TreeCursor, source: &str, code_blocks: &mut Vec<CodeBlock>) {
     loop {
         let node = cursor.node();
         if node.is_named() {
@@ -56,7 +56,7 @@ fn traverse_tree(cursor: &mut tree_sitter::TreeCursor, source: &str, code_blocks
 
             code_blocks.push(CodeBlock {
                 start_byte,
-                end_byte,
+                // end_byte,
                 start_line,
                 end_line,
                 content: content.clone(),
@@ -64,7 +64,7 @@ fn traverse_tree(cursor: &mut tree_sitter::TreeCursor, source: &str, code_blocks
 
             if cursor.goto_first_child() {
                 log::debug!("Going to first child of node at line {}", node.start_position().row + 1);
-                traverse_tree(cursor, source, code_blocks, Some(content));
+                traverse_tree(cursor, source, code_blocks);
                 cursor.goto_parent();
                 log::debug!("Returning to parent of node at line {}", node.start_position().row + 1);
             }
