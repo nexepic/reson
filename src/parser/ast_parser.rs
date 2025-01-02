@@ -1,4 +1,4 @@
-use tree_sitter::{Parser, Tree};
+use tree_sitter::{Node, Parser, Tree};
 use tree_sitter_c::language as c_language;
 use tree_sitter_java::language as java_language;
 use tree_sitter_python::language as python_language;
@@ -7,7 +7,7 @@ use std::fs;
 #[derive(Debug)]
 pub struct CodeBlock {
     pub start_byte: usize,
-    // pub end_byte: usize,
+    pub end_byte: usize,
     pub start_line: usize,
     pub end_line: usize,
     pub content: String,
@@ -46,46 +46,70 @@ fn traverse_tree(cursor: &mut tree_sitter::TreeCursor, source: &str, code_blocks
     loop {
         let node = cursor.node();
         if node.is_named() {
-            let start_byte = node.start_byte();
-            let end_byte = node.end_byte();
-            let start_line = node.start_position().row + 1; // increase line number by 1
-            let end_line = node.end_position().row + 1; // increase line number by 1
-            let content = source[start_byte..end_byte].to_string();
-
-            log::debug!("Found node: start_line={}, end_line={}, content={}", start_line, end_line, content);
+            let content = source[node.start_byte()..node.end_byte()].to_string();
+            log::debug!(
+                "Node: kind={}, start_byte={}, end_byte={}, content={}",
+                node.kind(),
+                node.start_byte(),
+                node.end_byte(),
+                content
+            );
 
             code_blocks.push(CodeBlock {
-                start_byte,
-                // end_byte,
-                start_line,
-                end_line,
+                start_byte: node.start_byte(),
+                end_byte: node.end_byte(),
+                start_line: node.start_position().row + 1,
+                end_line: node.end_position().row + 1,
                 content: content.clone(),
             });
 
             if cursor.goto_first_child() {
-                log::debug!("Going to first child of node at line {}", node.start_position().row + 1);
                 traverse_tree(cursor, source, code_blocks);
                 cursor.goto_parent();
-                log::debug!("Returning to parent of node at line {}", node.start_position().row + 1);
             }
         }
 
         if !cursor.goto_next_sibling() {
-            log::debug!("No more siblings for node at line {}", node.start_position().row + 1);
             break;
-        } else {
-            log::debug!("Going to next sibling of node at line {}", node.start_position().row + 1);
         }
     }
 }
 
-pub fn get_parent_content(cursor: &tree_sitter::TreeCursor, source: &str) -> Option<String> {
-    let mut parent_cursor = cursor.clone();
-    if parent_cursor.goto_parent() {
-        let node = parent_cursor.node();
-        let start_byte = node.start_byte();
-        let end_byte = node.end_byte();
+pub fn get_parent_content(tree: &Tree, source: &str, block_start_byte: usize, block_end_byte: usize) -> Option<String> {
+    let mut cursor = tree.walk();
+    let mut found_target = false;
+
+    // 1. 遍历整个树，找到目标子节点
+    loop {
+        let node = cursor.node();
+
+        // 确保节点的范围匹配目标子树
+        if node.start_byte() == block_start_byte && node.end_byte() == block_end_byte {
+            found_target = true;
+            break;
+        }
+
+        if !cursor.goto_first_child() {
+            while !cursor.goto_next_sibling() {
+                if !cursor.goto_parent() {
+                    return None; // 未找到目标子节点
+                }
+            }
+        }
+    }
+
+    if !found_target {
+        return None; // 无法找到目标节点
+    }
+
+    // 2. 向上查找父节点
+    if let Some(parent_node) = cursor.node().parent() {
+        let start_byte = parent_node.start_byte();
+        let end_byte = parent_node.end_byte();
+
+        // 提取父节点的内容
         return Some(source[start_byte..end_byte].to_string());
     }
+
     None
 }
