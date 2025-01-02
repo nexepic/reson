@@ -1,4 +1,4 @@
-public class Test {
+public class TestB {
     public static void printHello() {
         System.out.println("Hello, World!");
         for (int i = 0; i < 5; i++) {
@@ -11,7 +11,7 @@ public class Test {
         }
     }
 
-    public static void printHelloAgain() {
+    public static void printHelloNonContinuous() {
         System.out.println("Hello, World!");
         for (int i = 0; i < 5; i++) {
             System.out.println("This is line " + i);
@@ -25,6 +25,6 @@ public class Test {
 
     public static void main(String[] args) {
         printHello();
-        printHelloAgain();
+        printHelloNonContinuous();
     }
 }
