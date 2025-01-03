@@ -1,6 +1,6 @@
 #include <iostream>
 
-void print_hello() {
+void print_hello_test_a1() {
     std::cout << "Hello, World!" << std::endl;
     for (int i = 0; i < 5; i++) {
         std::cout << "This is line " << i << std::endl;
@@ -12,7 +12,7 @@ void print_hello() {
     }
 }
 
-void print_hello_again() {
+void print_hello_test_a2() {
     std::cout << "Hello, World!" << std::endl;
     for (int i = 0; i < 5; i++) {
         std::cout << "This is line " << i << std::endl;
@@ -38,8 +38,8 @@ void another_long_repeated_function_A() {
 }
 
 int main() {
-    print_hello();
-    print_hello_again();
+    print_hello_test_a1();
+    print_hello_test_a2();
     another_long_repeated_function();
     return 0;
 }

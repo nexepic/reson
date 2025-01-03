@@ -1,5 +1,5 @@
-public class TestA {
-    public static void printHelloTestA1() {
+public class TestC {
+    public static void printHelloTestC1() {
         System.out.println("Hello, World!");
         for (int i = 0; i < 5; i++) {
             System.out.println("This is line " + i);
@@ -9,9 +9,10 @@ public class TestA {
                 System.out.println("Odd number");
             }
         }
+        System.out.println("End of printHello");
     }
 
-    public static void printHelloTestA2() {
+    public static void printHelloTestC2() {
         System.out.println("Hello, World!");
         for (int i = 0; i < 5; i++) {
             System.out.println("This is line " + i);
@@ -20,12 +21,14 @@ public class TestA {
             } else {
                 System.out.println("Odd number");
             }
+            System.out.println("Current iteration: " + i);
         }
+        System.out.println("End of printHelloAgain");
     }
 
     public static void main(String[] args) {
         printHello();
-        printHelloTestA1();
-        printHelloTestA2();
+        printHelloTestC1();
+        printHelloTestC2();
     }
 }
