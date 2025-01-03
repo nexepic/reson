@@ -3,6 +3,7 @@ use tree_sitter_c::language as c_language;
 use tree_sitter_java::language as java_language;
 use tree_sitter_python::language as python_language;
 use tree_sitter_javascript::language as javascript_language;
+use tree_sitter_go::language as go_language;
 use std::fs;
 
 #[derive(Debug)]
@@ -24,6 +25,7 @@ pub fn parse_file(file_path: &std::path::Path) -> Result<(Vec<CodeBlock>, Tree, 
         Some("java") => java_language(),
         Some("js") => javascript_language(),
         Some("py") => python_language(),
+        Some("go") => go_language(),
         _ => return Err("Unsupported file extension".to_string()),
     };
 
