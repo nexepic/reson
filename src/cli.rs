@@ -65,8 +65,14 @@ impl CliArgs {
             )
             .get_matches();
 
+        let source_path: PathBuf = matches.get_one::<String>("source-path").unwrap().into();
+        if !source_path.exists() {
+            eprintln!("Error: The source path '{}' does not exist.", source_path.display());
+            std::process::exit(1);
+        }
+
         Self {
-            source_path: matches.get_one::<String>("source-path").unwrap().into(),
+            source_path,
             excludes: matches
                 .get_many::<String>("excludes")
                 .map(|values| values.map(ToString::to_string).collect())
