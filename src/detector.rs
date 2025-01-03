@@ -27,6 +27,7 @@ pub struct DuplicateReport {
 struct ParentFingerprint {
     fingerprint: String,
     content: String,
+    ast_content: String,
 }
 
 #[derive(Serialize)]
@@ -53,22 +54,24 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
             };
 
             for block in blocks {
-                log::debug!(
-                    "Processing block: start_line={}, end_line={}, content={}",
-                    block.start_line,
-                    block.end_line,
-                    block.content
-                );
+                // log::debug!(
+                //     "Processing block: start_line={}, end_line={}, content={}",
+                //     block.start_line,
+                //     block.end_line,
+                //     block.content
+                // );
                 let block_length = block.end_line - block.start_line + 1;
                 if block_length >= args.threshold {
-                    log::debug!("Original content before fingerprinting: {}", block.content);
-            
+                    // log::debug!("Original content before fingerprinting: {}", block.content);
+                    log::debug!("======================Block processing======================");
                     let mut block_parser = Parser::new();
                     block_parser.set_language(language).expect("Failed to set language");
                     let block_tree = block_parser.parse(&block.content, None).expect("Failed to parse block content");
-            
-                    let fingerprint = compute_ast_fingerprint(&block.content, Some(&block_tree));
-                    let ast_content = format!("{:?}", block_tree.root_node());
+
+                    let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content, None);
+                    // let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content, Some(&block_tree));
+
+                    // let ast_content = format!("{:?}", block_tree.root_node());
                     log::debug!("After fingerprinting: {}", fingerprint);
                     fingerprints.entry(fingerprint.clone()).or_default().push(DuplicateBlock {
                         start_line_number: block.start_line,
@@ -76,16 +79,18 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
                         source_file: file.to_string_lossy().to_string(),
                     });
             
-                    content_fingerprint_mappings.push((block.content.clone(), block.start_line, block.end_line, fingerprint.clone(), file.to_string_lossy().to_string(), ast_content.clone()));
+                    content_fingerprint_mappings.push((block.content.clone(), block.start_line, block.end_line, fingerprint.clone(), file.to_string_lossy().to_string(), ast_representation.clone()));
             
                     // Get the parent node's content
                     if let Some(parent_content) = get_parent_content(&tree, &source_code, block.start_byte, block.end_byte) {
-                        let parent_fingerprint = compute_ast_fingerprint(&parent_content, None);
+                        log::debug!("Computing parent fingerprint for content: {}", parent_content);
+                        let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(&parent_content, None);
                         parent_fingerprints.insert(
                             fingerprint.clone(),
                             ParentFingerprint {
                                 fingerprint: parent_fingerprint.clone(),
                                 content: parent_content.clone(),
+                                ast_content: ast_representation.clone(),
                             },
                         );
             
@@ -128,8 +133,8 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
         .filter(|(fingerprint, blocks)| {
             let retain = blocks.len() > 1
                 && (blocks[0].end_line_number - blocks[0].start_line_number + 1) >= args.threshold
-                && debug_data.parent_fingerprints.get(fingerprint)
-                .map_or(true, |pf| !debug_data.exceeding_threshold_fingerprints.contains(&pf.fingerprint));
+                && parent_fingerprints.get(fingerprint)
+                .map_or(true, |pf| !exceeding_threshold_fingerprints.contains(&pf.fingerprint));
             log::debug!(
                 "Filtering fingerprint: {}, retain: {}, blocks: {:?}",
                 fingerprint,
