@@ -8,6 +8,7 @@ use tree_sitter::Parser;
 use tree_sitter_c::language as c_language;
 use tree_sitter_java::language as java_language;
 use tree_sitter_python::language as python_language;
+use tree_sitter_javascript::language as javascript_language;
 
 #[derive(Serialize, Debug)]
 pub struct DuplicateBlock {
@@ -49,30 +50,28 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
             let language = match file.extension().and_then(|ext| ext.to_str()) {
                 Some("c") | Some("cpp") => c_language(),
                 Some("java") => java_language(),
+                Some("js") => javascript_language(),
                 Some("py") => python_language(),
                 _ => continue,
             };
 
             for block in blocks {
-                // log::debug!(
-                //     "Processing block: start_line={}, end_line={}, content={}",
-                //     block.start_line,
-                //     block.end_line,
-                //     block.content
-                // );
                 let block_length = block.end_line - block.start_line + 1;
                 if block_length >= args.threshold {
-                    // log::debug!("Original content before fingerprinting: {}", block.content);
-                    log::debug!("======================Block processing======================");
                     let mut block_parser = Parser::new();
                     block_parser.set_language(language).expect("Failed to set language");
                     let block_tree = block_parser.parse(&block.content, None).expect("Failed to parse block content");
-
+            
                     let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content, None);
                     // let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content, Some(&block_tree));
-
-                    // let ast_content = format!("{:?}", block_tree.root_node());
-                    log::debug!("After fingerprinting: {}", fingerprint);
+            
+                    // Check if the block already exists
+                    if let Some(existing_blocks) = fingerprints.get(&fingerprint) {
+                        if existing_blocks.iter().any(|b| b.start_line_number == block.start_line && b.end_line_number == block.end_line && b.source_file == file.to_string_lossy().to_string()) {
+                            continue; // Skip insertion if the block already exists
+                        }
+                    }
+            
                     fingerprints.entry(fingerprint.clone()).or_default().push(DuplicateBlock {
                         start_line_number: block.start_line,
                         end_line_number: block.end_line,
@@ -81,9 +80,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
             
                     content_fingerprint_mappings.push((block.content.clone(), block.start_line, block.end_line, fingerprint.clone(), file.to_string_lossy().to_string(), ast_representation.clone()));
             
-                    // Get the parent node's content
                     if let Some(parent_content) = get_parent_content(&tree, &source_code, block.start_byte, block.end_byte) {
-                        log::debug!("Computing parent fingerprint for content: {}", parent_content);
                         let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(&parent_content, None);
                         parent_fingerprints.insert(
                             fingerprint.clone(),
@@ -92,16 +89,6 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
                                 content: parent_content.clone(),
                                 ast_content: ast_representation.clone(),
                             },
-                        );
-            
-                        log::debug!(
-                            "Block exceeds threshold: start_line={}, end_line={}, content={}, parent_content={}, fingerprint={}, parent_fingerprint={}",
-                            block.start_line,
-                            block.end_line,
-                            block.content,
-                            parent_content,
-                            fingerprint,
-                            parent_fingerprint
                         );
                     }
                 }
