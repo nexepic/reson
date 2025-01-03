@@ -30,31 +30,37 @@ pub fn compute_fingerprint(content: &str) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-pub fn compute_ast_fingerprint(content: &str, tree: Option<&Tree>) -> String {
+pub fn compute_ast_fingerprint(content: &str, tree: Option<&Tree>) -> (String, String) {
     log::debug!("Computing AST fingerprint for content: {}", content);
     let mut hasher = Sha256::new();
     let ast_representation = if let Some(tree) = tree {
-        collect_ast_content(tree.root_node())
+        collect_ast_content(tree.root_node(), content)
     } else {
         // Parse the AST from content
         let mut parser = Parser::new();
         parser.set_language(tree_sitter_c::language()).expect("Failed to set language");
         let parsed_tree = parser.parse(content, None).expect("Failed to parse content");
-        collect_ast_content(parsed_tree.root_node())
+        collect_ast_content(parsed_tree.root_node(), content)
     };
     log::debug!("AST representation: {}", ast_representation);
-    hasher.update(ast_representation);
-    format!("{:x}", hasher.finalize())
+    hasher.update(&ast_representation);
+    let fingerprint = format!("{:x}", hasher.finalize());
+    log::debug!("Computed fingerprint: {}", fingerprint);
+    (fingerprint, ast_representation)
 }
 
 /// Recursively collect the content of all nodes in the AST
-fn collect_ast_content(node: Node) -> String {
+fn collect_ast_content(node: Node, source_code: &str) -> String {
     let mut content = String::new();
     if node.is_named() {
+        let start_byte = node.start_byte();
+        let end_byte = node.end_byte();
+        let node_text = &source_code[start_byte..end_byte];
+        log::debug!("Node type: {:?}, text: {:?}", node.kind(), node_text);
         content.push_str(&format!("{:?}\n", node.kind()));
     }
     for child in node.children(&mut node.walk()) {
-        content.push_str(&collect_ast_content(child));
+        content.push_str(&collect_ast_content(child, source_code));
     }
     content
 }
