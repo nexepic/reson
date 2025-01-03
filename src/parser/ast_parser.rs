@@ -79,11 +79,11 @@ pub fn get_parent_content(tree: &Tree, source: &str, block_start_byte: usize, bl
     let mut cursor = tree.walk();
     let mut found_target = false;
 
-    // 1. 遍历整个树，找到目标子节点
+    // 1. Traverse the entire tree to find the target child node
     loop {
         let node = cursor.node();
 
-        // 确保节点的范围匹配目标子树
+        // Ensure the node's range matches the target subtree
         if node.start_byte() == block_start_byte && node.end_byte() == block_end_byte {
             found_target = true;
             break;
@@ -92,22 +92,22 @@ pub fn get_parent_content(tree: &Tree, source: &str, block_start_byte: usize, bl
         if !cursor.goto_first_child() {
             while !cursor.goto_next_sibling() {
                 if !cursor.goto_parent() {
-                    return None; // 未找到目标子节点
+                    return None; // Target child node not found
                 }
             }
         }
     }
 
     if !found_target {
-        return None; // 无法找到目标节点
+        return None; // Unable to find the target node
     }
 
-    // 2. 向上查找父节点
+    // 2. Traverse upwards to find the parent node
     if let Some(parent_node) = cursor.node().parent() {
         let start_byte = parent_node.start_byte();
         let end_byte = parent_node.end_byte();
 
-        // 提取父节点的内容
+        // Extract the content of the parent node
         return Some(source[start_byte..end_byte].to_string());
     }
 
