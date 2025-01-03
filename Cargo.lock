@@ -285,7 +285,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
-name = "resoync"
+name = "reson"
 version = "0.1.0"
 dependencies = [
  "clap",
@@ -298,6 +298,7 @@ dependencies = [
  "tree-sitter",
  "tree-sitter-c",
  "tree-sitter-java",
+ "tree-sitter-javascript",
  "tree-sitter-python",
 ]
 
@@ -379,9 +380,9 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter-c"
-version = "0.20.8"
+version = "0.20.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bbd5f3d8658c08581f8f2adac6c391c2e9fa00fe9246bf6c5f52213b9cc6b72"
+checksum = "fa1bb73a4101c88775e4fefcd0543ee25e192034484a5bd45cb99eefb997dca9"
 dependencies = [
  "cc",
  "tree-sitter",
@@ -398,10 +399,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree-sitter-python"
+name = "tree-sitter-javascript"
 version = "0.20.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6c93b1b1fbd0d399db3445f51fd3058e43d0b4dcff62ddbdb46e66550978aa5"
+checksum = "d015c02ea98b62c806f7329ff71c383286dfc3a7a7da0cc484f6e42922f73c2c"
+dependencies = [
+ "cc",
+ "tree-sitter",
+]
+
+[[package]]
+name = "tree-sitter-python"
+version = "0.20.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f47ebd9cac632764b2f4389b08517bf2ef895431dd163eb562e3d2062cc23a14"
 dependencies = [
  "cc",
  "tree-sitter",
