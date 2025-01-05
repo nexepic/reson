@@ -4,6 +4,7 @@ use tree_sitter_java::language as java_language;
 use tree_sitter_python::language as python_language;
 use tree_sitter_javascript::language as javascript_language;
 use tree_sitter_go::language as go_language;
+use tree_sitter_rust::language as rust_language;
 use std::fs;
 
 #[derive(Debug)]
@@ -26,6 +27,7 @@ pub fn parse_file(file_path: &std::path::Path) -> Result<(Vec<CodeBlock>, Tree, 
         Some("js") => javascript_language(),
         Some("py") => python_language(),
         Some("go") => go_language(),
+        Some("rs") => rust_language(),
         _ => return Err("Unsupported file extension".to_string()),
     };
 
@@ -81,16 +83,23 @@ fn traverse_tree(cursor: &mut tree_sitter::TreeCursor, source: &str, code_blocks
 
 pub fn get_parent_content(tree: &Tree, source: &str, block_start_byte: usize, block_end_byte: usize) -> Option<String> {
     let mut cursor = tree.walk();
-    let mut found_target = false;
 
-    // 1. Traverse the entire tree to find the target child node
+    // Traverse the entire tree to find the target child node
     loop {
         let node = cursor.node();
 
         // Ensure the node's range matches the target subtree
         if node.start_byte() == block_start_byte && node.end_byte() == block_end_byte {
-            found_target = true;
-            break;
+            // Traverse upwards to find the parent node
+            if let Some(parent_node) = node.parent() {
+                let start_byte = parent_node.start_byte();
+                let end_byte = parent_node.end_byte();
+
+                // Extract the content of the parent node
+                return Some(source[start_byte..end_byte].to_string());
+            } else {
+                return None; // No parent node found
+            }
         }
 
         if !cursor.goto_first_child() {
@@ -101,19 +110,4 @@ pub fn get_parent_content(tree: &Tree, source: &str, block_start_byte: usize, bl
             }
         }
     }
-
-    if !found_target {
-        return None; // Unable to find the target node
-    }
-
-    // 2. Traverse upwards to find the parent node
-    if let Some(parent_node) = cursor.node().parent() {
-        let start_byte = parent_node.start_byte();
-        let end_byte = parent_node.end_byte();
-
-        // Extract the content of the parent node
-        return Some(source[start_byte..end_byte].to_string());
-    }
-
-    None
 }
