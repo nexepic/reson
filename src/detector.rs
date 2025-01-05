@@ -10,6 +10,7 @@ use tree_sitter_java::language as java_language;
 use tree_sitter_python::language as python_language;
 use tree_sitter_javascript::language as javascript_language;
 use tree_sitter_go::language as go_language;
+use tree_sitter_rust::language as rust_language;
 
 #[derive(Serialize, Debug)]
 pub struct DuplicateBlock {
@@ -54,6 +55,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
                 Some("js") => javascript_language(),
                 Some("py") => python_language(),
                 Some("go") => go_language(),
+                Some("rs") => rust_language(),
                 _ => continue,
             };
 
