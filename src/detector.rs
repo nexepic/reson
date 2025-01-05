@@ -4,13 +4,6 @@ use serde::Serialize;
 use std::collections::{HashMap, BTreeSet};
 use std::fs::File;
 use std::io::Write;
-use tree_sitter::Parser;
-use tree_sitter_c::language as c_language;
-use tree_sitter_java::language as java_language;
-use tree_sitter_python::language as python_language;
-use tree_sitter_javascript::language as javascript_language;
-use tree_sitter_go::language as go_language;
-use tree_sitter_rust::language as rust_language;
 
 #[derive(Serialize, Debug)]
 pub struct DuplicateBlock {
@@ -49,25 +42,11 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
 
     for file in files {
         if let Ok((blocks, tree, source_code)) = parse_file(&file) {
-            let language = match file.extension().and_then(|ext| ext.to_str()) {
-                Some("c") | Some("cpp") => c_language(),
-                Some("java") => java_language(),
-                Some("js") => javascript_language(),
-                Some("py") => python_language(),
-                Some("go") => go_language(),
-                Some("rs") => rust_language(),
-                _ => continue,
-            };
-
             for block in blocks {
                 let block_length = block.end_line - block.start_line + 1;
                 if block_length >= args.threshold {
-                    let mut block_parser = Parser::new();
-                    block_parser.set_language(language).expect("Failed to set language");
-                    let block_tree = block_parser.parse(&block.content, None).expect("Failed to parse block content");
             
-                    let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content, None);
-                    // let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content, Some(&block_tree));
+                    let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content);
             
                     // Check if the block already exists
                     if let Some(existing_blocks) = fingerprints.get(&fingerprint) {
@@ -85,7 +64,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
                     content_fingerprint_mappings.push((block.content.clone(), block.start_line, block.end_line, fingerprint.clone(), file.to_string_lossy().to_string(), ast_representation.clone()));
             
                     if let Some(parent_content) = get_parent_content(&tree, &source_code, block.start_byte, block.end_byte) {
-                        let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(&parent_content, None);
+                        let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(&parent_content);
                         parent_fingerprints.insert(
                             fingerprint.clone(),
                             ParentFingerprint {

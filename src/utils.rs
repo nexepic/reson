@@ -4,7 +4,7 @@ use glob::Pattern;
 use serde::Serialize;
 use std::fs::File;
 use std::io::Write;
-use tree_sitter::{Node, Parser, Tree};
+use tree_sitter::{Node, Parser};
 use sha2::{Sha256, Digest};
 
 /// Filters files based on glob patterns and returns matched file paths
@@ -22,26 +22,43 @@ pub fn filter_files(source_path: &Path, excludes: &[String]) -> Vec<PathBuf> {
         .collect()
 }
 
-/// Compute a simple fingerprint for a block of code (e.g., a hash)
-pub fn compute_fingerprint(content: &str) -> String {
-    let mut hasher = Sha256::new();
-    let trimmed_content = content.trim();
-    hasher.update(trimmed_content);
-    format!("{:x}", hasher.finalize())
-}
+// /// Compute a simple fingerprint for a block of code (e.g., a hash)
+// pub fn compute_fingerprint(content: &str) -> String {
+//     let mut hasher = Sha256::new();
+//     let trimmed_content = content.trim();
+//     hasher.update(trimmed_content);
+//     format!("{:x}", hasher.finalize())
+// }
 
-pub fn compute_ast_fingerprint(content: &str, tree: Option<&Tree>) -> (String, String) {
+// pub fn compute_ast_fingerprint(content: &str, tree: Option<&Tree>) -> (String, String) {
+//     log::debug!("Computing AST fingerprint for content: {}", content);
+//     let mut hasher = Sha256::new();
+//     let ast_representation = if let Some(tree) = tree {
+//         collect_ast_content(tree.root_node(), content)
+//     } else {
+//         // Parse the AST from content
+//         let mut parser = Parser::new();
+//         parser.set_language(tree_sitter_c::language()).expect("Failed to set language");
+//         let parsed_tree = parser.parse(content, None).expect("Failed to parse content");
+//         collect_ast_content(parsed_tree.root_node(), content)
+//     };
+//     log::debug!("AST representation: {}", ast_representation);
+//     hasher.update(&ast_representation);
+//     let fingerprint = format!("{:x}", hasher.finalize());
+//     log::debug!("Computed fingerprint: {}", fingerprint);
+//     (fingerprint, ast_representation)
+// }
+
+pub fn compute_ast_fingerprint(content: &str) -> (String, String) {
     log::debug!("Computing AST fingerprint for content: {}", content);
     let mut hasher = Sha256::new();
-    let ast_representation = if let Some(tree) = tree {
-        collect_ast_content(tree.root_node(), content)
-    } else {
-        // Parse the AST from content
-        let mut parser = Parser::new();
-        parser.set_language(tree_sitter_c::language()).expect("Failed to set language");
-        let parsed_tree = parser.parse(content, None).expect("Failed to parse content");
-        collect_ast_content(parsed_tree.root_node(), content)
-    };
+
+    // Parse the AST from content
+    let mut parser = Parser::new();
+    parser.set_language(tree_sitter_c::language()).expect("Failed to set language");
+    let parsed_tree = parser.parse(content, None).expect("Failed to parse content");
+    let ast_representation = collect_ast_content(parsed_tree.root_node(), content);
+
     log::debug!("AST representation: {}", ast_representation);
     hasher.update(&ast_representation);
     let fingerprint = format!("{:x}", hasher.finalize());
@@ -64,35 +81,6 @@ fn collect_ast_content(node: Node, source_code: &str) -> String {
     }
     content
 }
-
-// /// Compute a fingerprint for a block of code based on its AST representation
-// pub fn compute_ast_fingerprint(content: &str, tree: &Tree) -> String {
-//     log::debug!("Computing AST fingerprint for content: {}", content);
-//     let mut hasher = Sha256::new();
-//     let ast_representation = collect_ast_content(tree.root_node(), content);
-//     log::debug!("AST representation: {}", ast_representation);
-//     hasher.update(ast_representation);
-//     format!("{:x}", hasher.finalize())
-// }
-// 
-// /// Recursively collect the content of all nodes in the AST
-// fn collect_ast_content(node: Node, source_code: &str) -> String {
-//     let mut content = String::new();
-//     if node.is_named() {
-//         let start_byte = node.start_byte();
-//         let end_byte = node.end_byte();
-//         let node_text = &source_code[start_byte..end_byte];
-//         content.push_str(&format!(
-//             "Node type: {:?}, text: {:?}\n",
-//             node.kind(),
-//             node_text
-//         ));
-//     }
-//     for child in node.children(&mut node.walk()) {
-//         content.push_str(&collect_ast_content(child, source_code));
-//     }
-//     content
-// }
 
 /// Write output in JSON or other formats
 pub fn write_output<T: Serialize>(results: &T, output_format: &str, output_file: Option<&Path>) -> Result<(), std::io::Error> {

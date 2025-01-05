@@ -1,4 +1,4 @@
-use tree_sitter::{Node, Parser, Tree};
+use tree_sitter::{Parser, Tree};
 use tree_sitter_c::language as c_language;
 use tree_sitter_java::language as java_language;
 use tree_sitter_python::language as python_language;
