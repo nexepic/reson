@@ -80,6 +80,15 @@ impl CliArgs {
             )
     }
 
+    fn parse_source_path(matches: &clap::ArgMatches) -> PathBuf {
+        let source_path: PathBuf = matches.get_one::<PathBuf>("source-path").unwrap().to_path_buf();
+        if let Err(err) = CliArgs::validate_source_path(&source_path) {
+            eprintln!("{}", err);
+            std::process::exit(1);
+        }
+        source_path
+    }
+
     pub fn validate_source_path(source_path: &PathBuf) -> Result<(), String> {
         if !source_path.exists() {
             let error_message = format!(
@@ -91,34 +100,45 @@ impl CliArgs {
         Ok(())
     }
 
-    pub fn parse() -> Self {
-        let matches = Self::command().get_matches();
-
-        let source_path: PathBuf = matches.get_one::<PathBuf>("source-path").unwrap().to_path_buf();
-        if let Err(err) = CliArgs::validate_source_path(&source_path) {
-            eprintln!("{}", err);
-            std::process::exit(1);
-        }
-
-        let excludes: Vec<String> = matches
+    fn parse_excludes(matches: &clap::ArgMatches) -> Vec<String> {
+        matches
             .get_one::<String>("excludes")
             .unwrap()
             .split(',')
             .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty())
-            .collect();
+            .collect()
+    }
 
-        Self {
-            source_path,
-            excludes,
+    fn parse_output_file(matches: &clap::ArgMatches) -> Option<PathBuf> {
+        matches.get_one::<PathBuf>("output-file").cloned()
+    }
+
+    fn parse_threshold(matches: &clap::ArgMatches) -> usize {
+        *matches.get_one::<usize>("threshold").unwrap()
+    }
+
+    fn parse_debug(matches: &clap::ArgMatches) -> bool {
+        *matches.get_one::<bool>("debug").unwrap_or(&false)
+    }
+    
+    fn parse_cli_args(matches: &clap::ArgMatches) -> CliArgs {
+        CliArgs {
+            source_path: CliArgs::parse_source_path(matches),
+            excludes: CliArgs::parse_excludes(matches),
             output_format: matches
                 .get_one::<String>("output-format")
                 .unwrap()
                 .to_string(),
-            output_file: matches.get_one::<PathBuf>("output-file").cloned(),
-            threshold: *matches.get_one::<usize>("threshold").unwrap(),
-            debug: *matches.get_one::<bool>("debug").unwrap_or(&false),
+            output_file: CliArgs::parse_output_file(matches),
+            threshold: CliArgs::parse_threshold(matches),
+            debug: CliArgs::parse_debug(matches),
         }
+    }
+
+    pub fn parse() -> Self {
+        let matches = Self::command().get_matches();
+        CliArgs::parse_cli_args(&matches)
     }
 }
 
@@ -185,50 +205,82 @@ mod tests {
     }
 
     #[test]
-    fn test_output_format_default() {
-        let matches = CliArgs::command().try_get_matches_from(vec![
-            "code-duplication-detector",
-            "--source-path",
-            "src",
-        ]);
-
-        assert!(matches.is_ok());
-        let matches = matches.unwrap();
-
-        let output_format = matches.get_one::<String>("output-format").unwrap();
-        assert_eq!(output_format, "json");
-    }
-
-    #[test]
-    fn test_output_file_optional() {
+    fn test_parse_output_file() {
         let matches = CliArgs::command().try_get_matches_from(vec![
             "code-duplication-detector",
             "--source-path",
             "src",
             "--output-file",
             "result.json",
-        ]);
+        ]).unwrap();
 
-        assert!(matches.is_ok());
-        let matches = matches.unwrap();
-
-        let output_file = matches.get_one::<PathBuf>("output-file").cloned();
+        let output_file = CliArgs::parse_output_file(&matches);
         assert_eq!(output_file, Some(PathBuf::from("result.json")));
     }
 
     #[test]
-    fn test_debug_flag() {
+    fn test_parse_threshold() {
+        let matches = CliArgs::command().try_get_matches_from(vec![
+            "code-duplication-detector",
+            "--source-path",
+            "src",
+            "--threshold",
+            "10",
+        ]).unwrap();
+
+        let threshold = CliArgs::parse_threshold(&matches);
+        assert_eq!(threshold, 10);
+    }
+
+    #[test]
+    fn test_parse_debug() {
         let matches = CliArgs::command().try_get_matches_from(vec![
             "code-duplication-detector",
             "--source-path",
             "src",
             "--debug",
-        ]);
+        ]).unwrap();
 
-        assert!(matches.is_ok());
-        let matches = matches.unwrap();
+        let debug = CliArgs::parse_debug(&matches);
+        assert!(debug);
+    }
 
-        let debug = matches.get_one::<bool>("debug").unwrap_or(&false);
-        assert!(*debug);
+    #[test]
+    fn test_parse_debug_default() {
+        let matches = CliArgs::command().try_get_matches_from(vec![
+            "code-duplication-detector",
+            "--source-path",
+            "src",
+        ]).unwrap();
+
+        let debug = CliArgs::parse_debug(&matches);
+        assert!(!debug);
+    }
+
+    #[test]
+    fn test_parse_cli_args() {
+        let matches = CliArgs::command().try_get_matches_from(vec![
+            "code-duplication-detector",
+            "--source-path",
+            "src",
+            "--excludes",
+            "tests,temp,build",
+            "--output-format",
+            "json",
+            "--output-file",
+            "result.json",
+            "--threshold",
+            "10",
+            "--debug",
+        ]).unwrap();
+
+        let cli_args = CliArgs::parse_cli_args(&matches);
+
+        assert_eq!(cli_args.source_path, PathBuf::from("src"));
+        assert_eq!(cli_args.excludes, vec!["tests", "temp", "build"]);
+        assert_eq!(cli_args.output_format, "json");
+        assert_eq!(cli_args.output_file, Some(PathBuf::from("result.json")));
+        assert_eq!(cli_args.threshold, 10);
+        assert!(cli_args.debug);
     }
 }
