@@ -1,14 +1,20 @@
-name: Build
+name: Build and Release
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  release:
+    types: [created]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
     - name: Checkout code
@@ -57,3 +63,47 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: true
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        profile: minimal
+        override: true
+
+    - name: Build project
+      run: cargo build --release
+
+    - name: Upload Release Asset (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./target/release/reson
+        asset_name: reson_linux64
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Asset (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./target/release/reson.exe
+        asset_name: reson_win64
+        asset_content_type: application/octet-stream
+
+    - name: Upload Release Asset (macOS)
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./target/release/reson
+        asset_name: reson_darwin
+        asset_content_type: application/octet-stream

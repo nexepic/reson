@@ -36,7 +36,7 @@ This tool helps maintain high-quality codebases by identifying redundant code bl
 Clone the repository and build the project using Rust's Cargo:
 
 ```bash
-git clone <repository_url>
+git clone https://github.com/nexepic/reson.git
 cd reson
 cargo build --release
 ```
