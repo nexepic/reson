@@ -17,6 +17,20 @@ This tool helps maintain high-quality codebases by identifying redundant code bl
 
 ---
 
+## Supported Languages
+
+| Language     |
+|--------------|
+| C            |
+| C++          |
+| Java         |
+| Go           |
+| Python       |
+| JavaScript   |
+| Rust         |
+
+---
+
 ## Installation
 
 Clone the repository and build the project using Rust's Cargo:
