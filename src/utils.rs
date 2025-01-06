@@ -89,6 +89,7 @@ pub fn write_output<T: Serialize>(results: &T, output_format: &str, output_file:
     Ok(())
 }
 
+
 #[cfg(test)]
 mod tests {
     use super::*;

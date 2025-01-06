@@ -55,13 +55,13 @@ fn traverse_tree(cursor: &mut tree_sitter::TreeCursor, source: &str, code_blocks
         let node = cursor.node();
         if node.is_named() {
             let content = source[node.start_byte()..node.end_byte()].to_string();
-            log::debug!(
-                "Node: kind={}, start_byte={}, end_byte={}, content={}",
-                node.kind(),
-                node.start_byte(),
-                node.end_byte(),
-                content
-            );
+            // log::debug!(
+            //     "Node: kind={}, start_byte={}, end_byte={}, content={}",
+            //     node.kind(),
+            //     node.start_byte(),
+            //     node.end_byte(),
+            //     content
+            // );
 
             code_blocks.push(CodeBlock {
                 start_byte: node.start_byte(),
@@ -111,5 +111,120 @@ pub fn get_parent_content(tree: &Tree, source: &str, block_start_byte: usize, bl
                 }
             }
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::File;
+    use std::io::Write;
+    use std::path::PathBuf;
+
+    fn create_temp_file(content: &str, extension: &str) -> PathBuf {
+        let mut path = std::env::temp_dir();
+        path.push(format!("test_file.{}", extension));
+        let mut file = File::create(&path).expect("Failed to create temp file");
+        file.write_all(content.as_bytes()).expect("Failed to write to temp file");
+        path
+    }
+
+    #[test]
+    fn test_parse_c_file() {
+        let content = "int main() { return 0; }";
+        let file_path = create_temp_file(content, "c");
+
+        let result = parse_file(&file_path);
+
+        assert!(result.is_ok(), "Parsing C file failed");
+        let (code_blocks, _tree, source_code) = result.unwrap();
+
+        assert_eq!(source_code, content);
+        assert!(code_blocks.len() > 0);
+        assert_eq!(code_blocks[0].content, content);
+    }
+
+    #[test]
+    fn test_parse_cpp_file() {
+        let content = "#include <iostream>\nint main() { std::cout << \"Hello, World!\" << std::endl; return 0; }";
+        let file_path = create_temp_file(content, "cpp");
+
+        let result = parse_file(&file_path);
+
+        assert!(result.is_ok(), "Parsing C++ file failed");
+        let (code_blocks, _tree, source_code) = result.unwrap();
+
+        assert_eq!(source_code, content);
+        assert!(code_blocks.len() > 0);
+    }
+
+    #[test]
+    fn test_parse_java_file() {
+        let content = "public class Test { public static void main(String[] args) { System.out.println(\"Hello, World!\"); } }";
+        let file_path = create_temp_file(content, "java");
+
+        let result = parse_file(&file_path);
+
+        assert!(result.is_ok(), "Parsing Java file failed");
+        let (code_blocks, _tree, source_code) = result.unwrap();
+
+        assert_eq!(source_code, content);
+        assert!(code_blocks.len() > 0);
+    }
+
+    #[test]
+    fn test_parse_python_file() {
+        let content = "def main():\n    print(\"Hello, World!\")";
+        let file_path = create_temp_file(content, "py");
+
+        let result = parse_file(&file_path);
+
+        assert!(result.is_ok(), "Parsing Python file failed");
+        let (code_blocks, _tree, source_code) = result.unwrap();
+
+        assert_eq!(source_code, content);
+        assert!(code_blocks.len() > 0);
+    }
+
+    #[test]
+    fn test_parse_unsupported_file() {
+        let content = "unsupported content";
+        let file_path = create_temp_file(content, "txt");
+
+        let result = parse_file(&file_path);
+
+        assert!(result.is_err(), "Parsing unsupported file should fail");
+        assert_eq!(result.err().unwrap(), "Unsupported file extension");
+    }
+
+    #[test]
+    fn test_get_parent_content() {
+        let content = "int main() { int a = 10; return a; }";
+        let file_path = create_temp_file(content, "c");
+
+        let result = parse_file(&file_path).expect("Failed to parse file");
+        let (_code_blocks, tree, source_code) = result;
+
+        // Assuming we want to extract parent node content for the first block
+        let target_block = &_code_blocks[2];
+        let parent_content = get_parent_content(&tree, &source_code, target_block.start_byte, target_block.end_byte);
+
+        assert!(parent_content.is_some(), "Parent content should exist");
+        assert!(parent_content.unwrap().contains("main"));
+    }
+
+    #[test]
+    fn test_get_parent_content_no_parent() {
+        let content = "int main() { int a = 10; return a; }";
+        let file_path = create_temp_file(content, "c");
+
+        let result = parse_file(&file_path).expect("Failed to parse file");
+        let (_code_blocks, tree, source_code) = result;
+
+        // Assuming we want to extract parent node content for a non-existent block
+        let parent_content = get_parent_content(&tree, &source_code, 0, source_code.len() + 1);
+
+        assert!(parent_content.is_none(), "Parent content should not exist");
     }
 }
