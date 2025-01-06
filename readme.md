@@ -31,7 +31,7 @@ This tool helps maintain high-quality codebases by identifying redundant code bl
 
 ---
 
-## Installation
+## Build from Source
 
 Clone the repository and build the project using Rust's Cargo:
 
