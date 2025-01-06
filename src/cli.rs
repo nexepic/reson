@@ -3,12 +3,22 @@ use std::path::PathBuf;
 
 #[derive(Parser)]
 pub struct CliArgs {
+    #[clap(short = 's', long = "source-path", value_parser(clap::value_parser!(PathBuf)))]
     pub source_path: PathBuf,
+
+    #[clap(short = 'e', long = "excludes", value_parser(clap::builder::ValueParser::string()))]
     pub excludes: Vec<String>,
+
+    #[clap(short = 'o', long = "output-format", default_value = "json", value_parser(clap::builder::ValueParser::string()))]
     pub output_format: String,
+
+    #[clap(short = 'f', long = "output-file", value_parser(clap::value_parser!(PathBuf)))]
     pub output_file: Option<PathBuf>,
+
+    #[clap(short = 't', long = "threshold", default_value = "5", value_parser(clap::value_parser!(usize)))]
     pub threshold: usize,
-    #[clap(long)]
+
+    #[clap(long = "debug")]
     pub debug: bool,
 }
 
@@ -135,7 +145,7 @@ mod tests {
 
         assert!(result.is_ok());
     }
-    
+
     #[test]
     fn test_required_source_path() {
         let matches = CliArgs::command().try_get_matches_from(vec![
