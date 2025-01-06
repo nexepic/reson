@@ -65,6 +65,7 @@ jobs:
           fail_ci_if_error: true
 
   release:
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
