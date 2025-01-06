@@ -81,8 +81,15 @@ jobs:
       - name: Build project for release
         run: cargo build --release
 
+      - name: Debug release context
+        run: |
+          echo "Release Upload URL: ${{ github.event.release.upload_url }}"
+          echo "Release Name: ${{ github.event.release.name }}"
+          echo "Release Tag: ${{ github.event.release.tag_name }}"
+          echo "OS: ${{ matrix.os }}"
+
       - name: Upload Release Asset (Linux)
-        if: runner.os == 'Linux'
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ github.event.release.upload_url }}
@@ -91,7 +98,7 @@ jobs:
           asset_content_type: application/octet-stream
 
       - name: Upload Release Asset (Windows)
-        if: runner.os == 'Windows'
+        if: ${{ matrix.os == 'windows-latest' }}
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ github.event.release.upload_url }}
@@ -100,7 +107,7 @@ jobs:
           asset_content_type: application/octet-stream
 
       - name: Upload Release Asset (macOS)
-        if: runner.os == 'macOS'
+        if: ${{ matrix.os == 'macos-latest' }}
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ github.event.release.upload_url }}
