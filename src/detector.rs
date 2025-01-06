@@ -133,3 +133,83 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
         })
         .collect()
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use crate::cli::CliArgs;
+
+    fn setup_test_environment() -> PathBuf {
+        let test_dir = Path::new("./tests/rust");
+        test_dir.to_path_buf()
+    }
+
+    #[test]
+    fn test_detect_duplicates_no_duplicates() {
+        let test_dir = setup_test_environment();
+        let args = CliArgs {
+            source_path: test_dir.clone(),
+            excludes: vec![],
+            output_format: "json".to_string(),
+            output_file: None,
+            threshold: 100,
+            debug: false,
+        };
+    
+        let result = detect_duplicates(&args);
+        assert!(result.is_empty());
+    }
+    
+    #[test]
+    fn test_detect_duplicates_with_duplicates() {
+        let test_dir = setup_test_environment();
+        let args = CliArgs {
+            source_path: test_dir.clone(),
+            excludes: vec![],
+            output_format: "json".to_string(),
+            output_file: None,
+            threshold: 5,
+            debug: false,
+        };
+    
+        let result = detect_duplicates(&args);
+        assert!(!result.is_empty());
+    }
+    
+    #[test]
+    fn test_detect_duplicates_with_excludes() {
+        let test_dir = setup_test_environment();
+        let args = CliArgs {
+            source_path: test_dir.clone(),
+            excludes: vec!["./tests/rust/testA.rs".to_string(), "./tests/rust/testB.rs".to_string(), "./tests/rust/testC.rs".to_string()],
+            output_format: "json".to_string(),
+            output_file: None,
+            threshold: 5,
+            debug: false,
+        };
+    
+        let result = detect_duplicates(&args);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_detect_duplicates_debug_mode() {
+        let test_dir = setup_test_environment();
+        let args = CliArgs {
+            source_path: test_dir.clone(),
+            excludes: vec![],
+            output_format: "json".to_string(),
+            output_file: None,
+            threshold: 1,
+            debug: true,
+        };
+
+        let result = detect_duplicates(&args);
+        assert!(!result.is_empty());
+        assert!(Path::new("debug_data.json").exists());
+        fs::remove_file("debug_data.json").unwrap();
+    }
+}

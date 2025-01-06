@@ -44,7 +44,7 @@ impl CliArgs {
                     .value_name("EXCLUDES")
                     .help("Comma-separated list of paths to exclude")
                     .default_value("")
-                    .value_parser(clap::builder::ValueParser::string()),
+                    .value_parser(clap::value_parser!(String)),
             )
             .arg(
                 Arg::new("output-format")
@@ -53,7 +53,7 @@ impl CliArgs {
                     .value_name("FORMAT")
                     .help("Output format (e.g., json)")
                     .default_value("json")
-                    .value_parser(clap::builder::ValueParser::string()),
+                    .value_parser(clap::value_parser!(String)),
             )
             .arg(
                 Arg::new("output-file")

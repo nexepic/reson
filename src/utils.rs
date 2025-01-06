@@ -99,10 +99,10 @@ mod tests {
     #[test]
     fn test_filter_files() {
         let test_dir = Path::new("tests/rust");
-    
+
         let excludes = vec!["*.txt".to_string()];
         let filtered_files = filter_files(test_dir, &excludes);
-    
+
         assert_eq!(filtered_files.len(), 3);
         assert!(filtered_files.contains(&test_dir.join("testA.rs")));
         assert!(filtered_files.contains(&test_dir.join("testB.rs")));
@@ -155,7 +155,7 @@ mod tests {
         let output_format = "xml";
         let temp_file = tempfile::NamedTempFile::new().unwrap();
         let output_file = Some(temp_file.path());
-    
+
         let result = write_output(&results, output_format, output_file);
         assert!(result.is_err());
     }
