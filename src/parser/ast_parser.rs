@@ -93,15 +93,17 @@ pub fn get_parent_content(tree: &Tree, source: &str, block_start_byte: usize, bl
         // Ensure the node's range matches the target subtree
         if node.start_byte() == block_start_byte && node.end_byte() == block_end_byte {
             // Traverse upwards to find the parent node
-            if let Some(parent_node) = node.parent() {
+            let parent_content = if let Some(parent_node) = node.parent() {
                 let start_byte = parent_node.start_byte();
                 let end_byte = parent_node.end_byte();
-
+            
                 // Extract the content of the parent node
-                return Some(source[start_byte..end_byte].to_string());
+                Some(source[start_byte..end_byte].to_string())
             } else {
-                return None; // No parent node found
-            }
+                None
+            };
+            
+            return parent_content;
         }
 
         if !cursor.goto_first_child() {
