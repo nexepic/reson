@@ -52,7 +52,7 @@ jobs:
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2
       with:
-        files: ./coverage.xml
+        files: ./cobertura.xml
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: true
