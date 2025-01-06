@@ -70,12 +70,23 @@ impl CliArgs {
             )
     }
 
+    pub fn validate_source_path(source_path: &PathBuf) -> Result<(), String> {
+        if !source_path.exists() {
+            let error_message = format!(
+                "Error: The source path '{}' does not exist.",
+                source_path.display()
+            );
+            return Err(error_message);
+        }
+        Ok(())
+    }
+
     pub fn parse() -> Self {
         let matches = Self::command().get_matches();
 
         let source_path: PathBuf = matches.get_one::<PathBuf>("source-path").unwrap().to_path_buf();
-        if !source_path.exists() {
-            eprintln!("Error: The source path '{}' does not exist.", source_path.display());
+        if let Err(err) = CliArgs::validate_source_path(&source_path) {
+            eprintln!("{}", err);
             std::process::exit(1);
         }
 
@@ -107,25 +118,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_invalid_source_path() {
-        let result = std::panic::catch_unwind(|| {
-            let matches = CliArgs::command().try_get_matches_from(vec![
-                "code-duplication-detector",
-                "--source-path",
-                "invalid_path",
-            ]);
-    
-            if let Ok(matches) = matches {
-                let source_path: PathBuf = matches.get_one::<PathBuf>("source-path").unwrap().to_path_buf();
-                if !source_path.exists() {
-                    panic!("Error: The source path '{}' does not exist.", source_path.display());
-                }
-            }
-        });
-    
+    fn test_validate_source_path_invalid() {
+        let invalid_path = PathBuf::from("invalid_path");
+        let result = CliArgs::validate_source_path(&invalid_path);
+
         assert!(result.is_err());
+        if let Err(err) = result {
+            assert!(err.contains("The source path 'invalid_path' does not exist."));
+        }
     }
 
+    #[test]
+    fn test_validate_source_path_valid() {
+        let valid_path = std::env::current_dir().unwrap();
+        let result = CliArgs::validate_source_path(&valid_path);
+
+        assert!(result.is_ok());
+    }
+    
     #[test]
     fn test_required_source_path() {
         let matches = CliArgs::command().try_get_matches_from(vec![
