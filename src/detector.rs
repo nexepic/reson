@@ -45,26 +45,36 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
             for block in blocks {
                 let block_length = block.end_line - block.start_line + 1;
                 if block_length >= args.threshold {
-            
-                    let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content);
-            
+                    let language = match file.extension().and_then(|ext| ext.to_str()) {
+                        Some("c") => "c",
+                        Some("cpp") => "cpp",
+                        Some("java") => "java",
+                        Some("js") => "js",
+                        Some("py") => "py",
+                        Some("go") => "go",
+                        Some("rs") => "rs",
+                        _ => panic!("Unsupported file extension"),
+                    };
+
+                    let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content, language);
+
                     // Check if the block already exists
                     if let Some(existing_blocks) = fingerprints.get(&fingerprint) {
                         if existing_blocks.iter().any(|b| b.start_line_number == block.start_line && b.end_line_number == block.end_line && b.source_file == file.to_string_lossy().to_string()) {
                             continue; // Skip insertion if the block already exists
                         }
                     }
-            
+
                     fingerprints.entry(fingerprint.clone()).or_default().push(DuplicateBlock {
                         start_line_number: block.start_line,
                         end_line_number: block.end_line,
                         source_file: file.to_string_lossy().to_string(),
                     });
-            
+
                     content_fingerprint_mappings.push((block.content.clone(), block.start_line, block.end_line, fingerprint.clone(), file.to_string_lossy().to_string(), ast_representation.clone()));
-            
+
                     if let Some(parent_content) = get_parent_content(&tree, &source_code, block.start_byte, block.end_byte) {
-                        let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(&parent_content);
+                        let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(&parent_content, language);
                         parent_fingerprints.insert(
                             fingerprint.clone(),
                             ParentFingerprint {

@@ -1,5 +1,6 @@
 use tree_sitter::{Parser, Tree};
 use tree_sitter_c::language as c_language;
+use tree_sitter_cpp::language as cpp_language;
 use tree_sitter_java::language as java_language;
 use tree_sitter_python::language as python_language;
 use tree_sitter_javascript::language as javascript_language;
@@ -22,7 +23,8 @@ pub fn parse_file(file_path: &std::path::Path) -> Result<(Vec<CodeBlock>, Tree, 
 
     // Select language based on file extension
     let language = match file_path.extension().and_then(|ext| ext.to_str()) {
-        Some("c") | Some("cpp") => c_language(),
+        Some("c") | Some("h") => c_language(),
+        Some("cpp") | Some("hpp") => cpp_language(),
         Some("java") => java_language(),
         Some("js") => javascript_language(),
         Some("py") => python_language(),
