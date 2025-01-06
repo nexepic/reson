@@ -22,40 +22,23 @@ pub fn filter_files(source_path: &Path, excludes: &[String]) -> Vec<PathBuf> {
         .collect()
 }
 
-// /// Compute a simple fingerprint for a block of code (e.g., a hash)
-// pub fn compute_fingerprint(content: &str) -> String {
-//     let mut hasher = Sha256::new();
-//     let trimmed_content = content.trim();
-//     hasher.update(trimmed_content);
-//     format!("{:x}", hasher.finalize())
-// }
-
-// pub fn compute_ast_fingerprint(content: &str, tree: Option<&Tree>) -> (String, String) {
-//     log::debug!("Computing AST fingerprint for content: {}", content);
-//     let mut hasher = Sha256::new();
-//     let ast_representation = if let Some(tree) = tree {
-//         collect_ast_content(tree.root_node(), content)
-//     } else {
-//         // Parse the AST from content
-//         let mut parser = Parser::new();
-//         parser.set_language(tree_sitter_c::language()).expect("Failed to set language");
-//         let parsed_tree = parser.parse(content, None).expect("Failed to parse content");
-//         collect_ast_content(parsed_tree.root_node(), content)
-//     };
-//     log::debug!("AST representation: {}", ast_representation);
-//     hasher.update(&ast_representation);
-//     let fingerprint = format!("{:x}", hasher.finalize());
-//     log::debug!("Computed fingerprint: {}", fingerprint);
-//     (fingerprint, ast_representation)
-// }
-
-pub fn compute_ast_fingerprint(content: &str) -> (String, String) {
+pub fn compute_ast_fingerprint(content: &str, language: &str) -> (String, String) {
     log::debug!("Computing AST fingerprint for content: {}", content);
     let mut hasher = Sha256::new();
 
     // Parse the AST from content
     let mut parser = Parser::new();
-    parser.set_language(tree_sitter_c::language()).expect("Failed to set language");
+    let tree_sitter_language = match language {
+        "c" => tree_sitter_c::language(),
+        "cpp" => tree_sitter_cpp::language(),
+        "java" => tree_sitter_java::language(),
+        "js" => tree_sitter_javascript::language(),
+        "py" => tree_sitter_python::language(),
+        "go" => tree_sitter_go::language(),
+        "rs" => tree_sitter_rust::language(),
+        _ => panic!("Unsupported language"),
+    };
+    parser.set_language(tree_sitter_language).expect("Failed to set language");
     let parsed_tree = parser.parse(content, None).expect("Failed to parse content");
     let ast_representation = collect_ast_content(parsed_tree.root_node(), content);
 
@@ -104,4 +87,75 @@ pub fn write_output<T: Serialize>(results: &T, output_format: &str, output_file:
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+    use tempfile;
+
+    #[test]
+    fn test_filter_files() {
+        let test_dir = Path::new("tests/rust");
+    
+        let excludes = vec!["*.txt".to_string()];
+        let filtered_files = filter_files(test_dir, &excludes);
+    
+        assert_eq!(filtered_files.len(), 3);
+        assert!(filtered_files.contains(&test_dir.join("testA.rs")));
+        assert!(filtered_files.contains(&test_dir.join("testB.rs")));
+        assert!(filtered_files.contains(&test_dir.join("testC.rs")));
+    }
+
+    #[test]
+    fn test_compute_ast_fingerprint() {
+        let content = r#"
+        fn main() {
+            println!("Hello, world!");
+        }
+        "#;
+        // Test for Rust language
+        let (fingerprint, ast_representation) = compute_ast_fingerprint(content, "rs");
+
+        assert!(!fingerprint.is_empty());
+        assert!(ast_representation.contains("expression_statement"));
+    }
+
+    #[test]
+    fn test_write_output_json() {
+        let results = json!([{"key": "value"}]);
+        let output_format = "json";
+        let temp_file = tempfile::NamedTempFile::new().unwrap();
+        let output_file = Some(temp_file.path());
+
+        write_output(&results, output_format, output_file).unwrap();
+
+        let written_content = fs::read_to_string(temp_file.path()).unwrap();
+        assert!(written_content.contains("\"key\": \"value\""));
+    }
+
+    #[test]
+    fn test_write_output_text() {
+        let results = json!([{"key": "value"}]);
+        let output_format = "text";
+        let temp_file = tempfile::NamedTempFile::new().unwrap();
+        let output_file = Some(temp_file.path());
+
+        write_output(&results, output_format, output_file).unwrap();
+
+        let written_content = fs::read_to_string(temp_file.path()).unwrap();
+        assert!(written_content.contains("Object"));
+    }
+
+    #[test]
+    fn test_write_output_unsupported_format() {
+        let results = json!([{"key": "value"}]);
+        let output_format = "xml";
+        let temp_file = tempfile::NamedTempFile::new().unwrap();
+        let output_file = Some(temp_file.path());
+    
+        let result = write_output(&results, output_format, output_file);
+        assert!(result.is_err());
+    }
 }
