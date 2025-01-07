@@ -3,8 +3,6 @@ name = "reson"
 version = "0.1.0"
 edition = "2024"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -22,3 +20,9 @@ log = "0.4.22"
 env_logger = "0.11.5"
 tempfile = "3.15.0"
 tree-sitter-cpp = "0.20"
+
+[target.'cfg(target_os = "linux")']
+rustflags = ["-C", "target-feature=+crt-static"]
+
+[target.'cfg(target_os = "windows")']
+rustflags = ["-C", "target-feature=+crt-static"]
