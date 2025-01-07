@@ -85,6 +85,10 @@ jobs:
       - name: Set Rust nightly as default
         run: rustup default nightly
 
+      - name: Install musl-tools (Ubuntu only)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
       - name: Install musl target for static linking
         run: |
           if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
