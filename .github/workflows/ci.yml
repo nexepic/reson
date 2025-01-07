@@ -90,12 +90,14 @@ jobs:
       - name: Build project for release
         run: cargo build --release
 
-      - name: Rename binary based on platform
+      - name: Rename binary and set permissions
         run: |
           if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
             mv ./target/release/reson ./target/release/reson_linux64
+            chmod +x ./target/release/reson_linux64
           elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
             mv ./target/release/reson ./target/release/reson_darwin
+            chmod +x ./target/release/reson_darwin
           elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
             powershell -Command "Rename-Item -Path ./target/release/reson.exe -NewName reson_win64.exe"
           fi
