@@ -90,30 +90,21 @@ jobs:
       - name: Build project for release
         run: cargo build --release
 
-      - name: Rename binary for platform
+      - name: Rename binary based on platform
         run: |
           if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
             mv ./target/release/reson ./target/release/reson_linux64
-          elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            mv ./target/release/reson.exe ./target/release/reson_win64.exe
           elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
             mv ./target/release/reson ./target/release/reson_darwin
+          elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            powershell -Command "Rename-Item -Path ./target/release/reson.exe -NewName reson_win64.exe"
           fi
+        shell: bash
 
-      - name: Upload Release Asset (Linux)
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
         with:
-          files: ./target/release/reson_linux64
-
-      - name: Upload Release Asset (Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ./target/release/reson_win64.exe
-
-      - name: Upload Release Asset (macOS)
-        if: ${{ matrix.os == 'macos-latest' }}
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ./target/release/reson_darwin
+          files: |
+            ${{ matrix.os == 'ubuntu-latest' && './target/release/reson_linux64' || '' }}
+            ${{ matrix.os == 'windows-latest' && './target/release/reson_win64.exe' || '' }}
+            ${{ matrix.os == 'macos-latest' && './target/release/reson_darwin' || '' }}
