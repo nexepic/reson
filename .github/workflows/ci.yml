@@ -36,6 +36,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-index-
 
+      - name: Install Rust nightly
+        run: rustup toolchain install nightly
+
+      - name: Set Rust nightly as default
+        run: rustup default nightly
+
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
 
