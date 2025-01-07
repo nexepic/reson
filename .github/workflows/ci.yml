@@ -68,11 +68,16 @@ jobs:
 
     strategy:
       matrix:
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
-        target:
-          - x86_64-unknown-linux-musl
-          - x86_64-pc-windows-msvc
-          - x86_64-apple-darwin
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            output_name: reson_linux64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            output_name: reson_darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-gnu
+            output_name: reson_win64.exe
 
     runs-on: ${{ matrix.os }}
 
@@ -101,19 +106,10 @@ jobs:
 
       - name: Rename binary and set permissions
         run: |
-          if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-            mv ./target/${{ matrix.target }}/release/reson ./target/release/reson_linux64
-          elif [ "${{ matrix.os }}" == "macos-latest" ]; then
-            mv ./target/${{ matrix.target }}/release/reson ./target/release/reson_darwin
-          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-            mv ./target/${{ matrix.target }}/release/reson.exe ./target/release/reson_win64.exe
-          fi
+          mv ./target/${{ matrix.target }}/release/reson ./target/release/${{ matrix.output_name }}
         shell: bash
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            ${{ matrix.os == 'ubuntu-latest' && './target/release/reson_linux64' || '' }}
-            ${{ matrix.os == 'windows-latest' && './target/release/reson_win64.exe' || '' }}
-            ${{ matrix.os == 'macos-latest' && './target/release/reson_darwin' || '' }}
+          files: ./target/release/${{ matrix.output_name }}
