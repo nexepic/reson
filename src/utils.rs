@@ -9,6 +9,14 @@ use sha2::{Sha256, Digest};
 
 /// Filters files based on glob patterns and returns matched file paths
 pub fn filter_files(source_path: &Path, excludes: &[String]) -> Vec<PathBuf> {
+    if source_path.is_file() {
+        return if excludes.iter().any(|pattern| Pattern::new(pattern).unwrap().matches_path(source_path)) {
+            vec![]
+        } else {
+            vec![source_path.to_path_buf()]
+        };
+    }
+
     let all_files = fs::read_dir(source_path)
         .unwrap()
         .filter_map(|entry| entry.ok().map(|e| e.path()))
@@ -97,6 +105,27 @@ mod tests {
     use tempfile;
 
     #[test]
+    fn test_filter_files_with_single_file() {
+        let file_path = Path::new("tests/rust/testA.rs");
+    
+        let excludes = vec!["*.rs".to_string()];
+        let filtered_files = filter_files(&file_path, &excludes);
+    
+        assert!(filtered_files.is_empty());
+    }
+    
+    #[test]
+    fn test_filter_files_with_single_file_not_excluded() {
+        let file_path = Path::new("tests/rust/testA.rs");
+    
+        let excludes = vec!["*.txt".to_string()];
+        let filtered_files = filter_files(&file_path, &excludes);
+    
+        assert_eq!(filtered_files.len(), 1);
+        assert_eq!(filtered_files[0], file_path);
+    }
+
+    #[test]
     fn test_filter_files() {
         let test_dir = Path::new("tests/rust");
 
@@ -121,6 +150,13 @@ mod tests {
 
         assert!(!fingerprint.is_empty());
         assert!(ast_representation.contains("expression_statement"));
+    }
+    
+    #[test]
+    #[should_panic(expected = "Unsupported language")]
+    fn test_compute_ast_fingerprint_unsupported_language() {
+        let content = "int main() { return 0; }";
+        compute_ast_fingerprint(content, "unsupported_language");
     }
 
     #[test]
