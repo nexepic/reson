@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-void print_hello_test_b1() {
+void print_hello_test_f1() {
     printf("Hello, World!\n");
     for (int i = 0; i < 5; i++) {
         printf("This is line %d\n", i);
@@ -12,7 +12,7 @@ void print_hello_test_b1() {
     }
 }
 
-void print_hello_test_b2() {
+void print_hello_test_f2() {
     printf("Hello, World!\n");
     for (int i = 0; i < 5; i++) {
         printf("This is line %d\n", i);
@@ -25,7 +25,7 @@ void print_hello_test_b2() {
 }
 
 int main() {
-    print_hello_test_b1();
-    print_hello_test_b2();
+    print_hello_test_f1();
+    print_hello_test_f2();
     return 0;
 }
