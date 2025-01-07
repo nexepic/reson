@@ -69,7 +69,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -90,30 +90,30 @@ jobs:
       - name: Build project for release
         run: cargo build --release
 
-      - name: Debug release context
+      - name: Rename binary for platform
         run: |
-          echo "Release Upload URL: ${{ github.event.release.upload_url }}"
-          echo "Release Name: ${{ github.event.release.name }}"
-          echo "Release Tag: ${{ github.event.release.tag_name }}"
-          echo "OS: ${{ matrix.os }}"
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            mv ./target/release/reson ./target/release/reson_linux64
+          elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            mv ./target/release/reson.exe ./target/release/reson_win64.exe
+          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            mv ./target/release/reson ./target/release/reson_darwin
+          fi
 
       - name: Upload Release Asset (Linux)
         if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: softprops/action-gh-release@v2
         with:
-          files: ./target/release/reson
-          name: reson_linux64
+          files: ./target/release/reson_linux64
 
       - name: Upload Release Asset (Windows)
         if: ${{ matrix.os == 'windows-latest' }}
         uses: softprops/action-gh-release@v2
         with:
-          files: ./target/release/reson.exe
-          name: reson_win64.exe
+          files: ./target/release/reson_win64.exe
 
       - name: Upload Release Asset (macOS)
         if: ${{ matrix.os == 'macos-latest' }}
         uses: softprops/action-gh-release@v2
         with:
-          files: ./target/release/reson
-          name: reson_darwin
+          files: ./target/release/reson_darwin
