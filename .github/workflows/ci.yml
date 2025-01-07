@@ -99,27 +99,21 @@ jobs:
 
       - name: Upload Release Asset (Linux)
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./target/release/reson
-          asset_name: reson_linux64
-          asset_content_type: application/octet-stream
+          files: ./target/release/reson
+          name: reson_linux64
 
       - name: Upload Release Asset (Windows)
         if: ${{ matrix.os == 'windows-latest' }}
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./target/release/reson.exe
-          asset_name: reson_win64.exe
-          asset_content_type: application/octet-stream
+          files: ./target/release/reson.exe
+          name: reson_win64.exe
 
       - name: Upload Release Asset (macOS)
         if: ${{ matrix.os == 'macos-latest' }}
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v2
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./target/release/reson
-          asset_name: reson_darwin
-          asset_content_type: application/octet-stream
+          files: ./target/release/reson
+          name: reson_darwin
