@@ -79,6 +79,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
+      - name: Install Rust nightly
+        run: rustup toolchain install nightly
+
+      - name: Set Rust nightly as default
+        run: rustup default nightly
+
       - name: Install musl target for static linking
         run: |
           if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
