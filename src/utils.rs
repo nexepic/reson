@@ -1,4 +1,3 @@
-use std::fs;
 use std::path::{Path, PathBuf};
 use glob::Pattern;
 use serde::Serialize;
@@ -6,6 +5,7 @@ use std::fs::File;
 use std::io::Write;
 use tree_sitter::{Node, Parser};
 use sha2::{Sha256, Digest};
+use walkdir::WalkDir;
 
 /// Filters files based on glob patterns and returns matched file paths
 pub fn filter_files(source_path: &Path, excludes: &[String]) -> Vec<PathBuf> {
@@ -17,13 +17,11 @@ pub fn filter_files(source_path: &Path, excludes: &[String]) -> Vec<PathBuf> {
         };
     }
 
-    let all_files = fs::read_dir(source_path)
-        .unwrap()
-        .filter_map(|entry| entry.ok().map(|e| e.path()))
-        .collect::<Vec<PathBuf>>();
-
-    all_files
+    WalkDir::new(source_path)
         .into_iter()
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.file_type().is_file())
+        .map(|entry| entry.path().to_path_buf())
         .filter(|file| {
             !excludes.iter().any(|pattern| Pattern::new(pattern).unwrap().matches_path(file))
         })
@@ -103,6 +101,7 @@ mod tests {
     use super::*;
     use serde_json::json;
     use tempfile;
+    use std::fs;
 
     #[test]
     fn test_filter_files_with_single_file() {

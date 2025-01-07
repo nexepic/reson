@@ -25,7 +25,7 @@ void print_hello_test_a2() {
 }
 
 int main() {
-    print_hello();
-    print_hello_again();
+    print_hello_test_a1();
+    print_hello_test_a2();
     return 0;
 }

@@ -1,6 +1,6 @@
 #include <iostream>
 
-void print_hello_test_b1() {
+void print_hello_test_h1() {
     std::cout << "Hello, World!" << std::endl;
     for (int i = 0; i < 5; i++) {
         std::cout << "This is line " << i << std::endl;
@@ -13,7 +13,7 @@ void print_hello_test_b1() {
     std::cout << "End of function" << std::endl;
 }
 
-void print_hello_test_b2() {
+void print_hello_test_h2() {
     std::cout << "Hello, World!" << std::endl;
     for (int i = 0; i < 5; i++) {
         std::cout << "This is line " << i << std::endl;
@@ -27,7 +27,7 @@ void print_hello_test_b2() {
 }
 
 int main() {
-    print_hello_test_b1();
-    print_hello_test_b2();
+    print_hello_test_h1();
+    print_hello_test_h2();
     return 0;
 }
