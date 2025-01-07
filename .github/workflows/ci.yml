@@ -68,7 +68,11 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        target:
+          - x86_64-unknown-linux-musl
+          - x86_64-pc-windows-msvc
+          - x86_64-apple-darwin
 
     runs-on: ${{ matrix.os }}
 
@@ -89,34 +93,20 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y musl-tools
 
-      - name: Install musl target for static linking
-        run: |
-          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-            rustup target add x86_64-unknown-linux-musl
-          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
-            rustup target add x86_64-apple-darwin
-          elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            rustup target add x86_64-pc-windows-gnu
-          fi
+      - name: Install target for static linking
+        run: rustup target add ${{ matrix.target }}
 
       - name: Build project with static linking
-        run: |
-          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-            cargo build --release --target x86_64-unknown-linux-musl
-          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
-            cargo build --release --target x86_64-apple-darwin
-          elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            cargo build --release --target x86_64-pc-windows-gnu
-          fi
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Rename binary and set permissions
         run: |
-          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-            mv ./target/x86_64-unknown-linux-musl/release/reson ./target/release/reson_linux64
-          elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
-            mv ./target/x86_64-apple-darwin/release/reson ./target/release/reson_darwin
-          elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            powershell -Command "Rename-Item -Path ./target/x86_64-pc-windows-gnu/release/reson.exe -NewName reson_win64.exe"
+          if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+            mv ./target/${{ matrix.target }}/release/reson ./target/release/reson_linux64
+          elif [ "${{ matrix.os }}" == "macos-latest" ]; then
+            mv ./target/${{ matrix.target }}/release/reson ./target/release/reson_darwin
+          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
+            mv ./target/${{ matrix.target }}/release/reson.exe ./target/release/reson_win64.exe
           fi
         shell: bash
 
