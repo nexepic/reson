@@ -12,7 +12,7 @@ pub fn compute_ast_fingerprint(content: &str, language: &str) -> (String, String
         "cpp" => tree_sitter_cpp::language(),
         "java" => tree_sitter_java::language(),
         "javascript" => tree_sitter_javascript::language(),
-        "py" => tree_sitter_python::language(),
+        "python" => tree_sitter_python::language(),
         "golang" => tree_sitter_go::language(),
         "rust" => tree_sitter_rust::language(),
         _ => panic!("Unsupported language"),
