@@ -53,7 +53,11 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
                         Some("py") => "py",
                         Some("go") => "go",
                         Some("rs") => "rs",
-                        _ => panic!("Unsupported file extension"),
+                        Some(ext) => {
+                            eprintln!("Unsupported file extension: {}", ext);
+                            return vec![];
+                        },
+                        None => return vec![],
                     };
 
                     let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content, language);

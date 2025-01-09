@@ -121,7 +121,7 @@ impl CliArgs {
     fn parse_debug(matches: &clap::ArgMatches) -> bool {
         *matches.get_one::<bool>("debug").unwrap_or(&false)
     }
-    
+
     fn parse_cli_args(matches: &clap::ArgMatches) -> CliArgs {
         CliArgs {
             source_path: CliArgs::parse_source_path(matches),
