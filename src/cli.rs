@@ -6,6 +6,9 @@ pub struct CliArgs {
     #[clap(short = 's', long = "source-path", value_parser(clap::value_parser!(PathBuf)))]
     pub source_path: PathBuf,
 
+    #[clap(short = 'l', long = "languages", value_parser(clap::builder::ValueParser::string()))]
+    pub languages: Vec<String>,
+
     #[clap(short = 'e', long = "excludes", value_parser(clap::builder::ValueParser::string()))]
     pub excludes: Vec<String>,
 
@@ -36,6 +39,15 @@ impl CliArgs {
                     .help("Path to the source code directory")
                     .required(true)
                     .value_parser(clap::value_parser!(PathBuf)),
+            )
+            .arg(
+                Arg::new("languages")
+                    .short('l')
+                    .long("languages")
+                    .value_name("LANGUAGES")
+                    .help("Comma-separated list of languages to parse")
+                    .default_value("")
+                    .value_parser(clap::value_parser!(String)),
             )
             .arg(
                 Arg::new("excludes")
@@ -99,6 +111,16 @@ impl CliArgs {
         }
         Ok(())
     }
+    
+    fn parse_languages(matches: &clap::ArgMatches) -> Vec<String> {
+        matches
+            .get_one::<String>("languages")
+            .unwrap()
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
+    }
 
     fn parse_excludes(matches: &clap::ArgMatches) -> Vec<String> {
         matches
@@ -125,6 +147,7 @@ impl CliArgs {
     fn parse_cli_args(matches: &clap::ArgMatches) -> CliArgs {
         CliArgs {
             source_path: CliArgs::parse_source_path(matches),
+            languages: CliArgs::parse_languages(matches),
             excludes: CliArgs::parse_excludes(matches),
             output_format: matches
                 .get_one::<String>("output-format")
@@ -179,6 +202,29 @@ mod tests {
 
         let source_path = matches.get_one::<PathBuf>("source-path").unwrap();
         assert_eq!(source_path, &PathBuf::from("src"));
+    }
+    
+    #[test]
+    fn test_languages_parsing() {
+        let matches = CliArgs::command().try_get_matches_from(vec![
+            "code-duplication-detector",
+            "--source-path",
+            "src",
+            "--languages",
+            "rust,java",
+        ]);
+
+        assert!(matches.is_ok());
+        let matches = matches.unwrap();
+
+        let languages: Vec<String> = matches
+            .get_one::<String>("languages")
+            .unwrap()
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .collect();
+
+        assert_eq!(languages, vec!["rust", "java"]);
     }
 
     #[test]
