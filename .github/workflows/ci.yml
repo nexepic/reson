@@ -37,10 +37,10 @@ jobs:
             ${{ runner.os }}-cargo-index-
 
       - name: Install Rust nightly
-        run: rustup toolchain install nightly
+        run: rustup toolchain install nightly-2024-12-17
 
       - name: Set Rust nightly as default
-        run: rustup default nightly
+        run: rustup default nightly-2024-12-17
 
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
@@ -89,10 +89,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Install Rust nightly
-        run: rustup toolchain install nightly
+        run: rustup toolchain install nightly-2024-12-17
 
       - name: Set Rust nightly as default
-        run: rustup default nightly
+        run: rustup default nightly-2024-12-17
 
       - name: Install musl-tools (Ubuntu only)
         if: matrix.os == 'ubuntu-latest'
