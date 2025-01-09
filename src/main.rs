@@ -5,9 +5,9 @@ mod utils;
 
 use crate::cli::CliArgs;
 use crate::detector::detect_duplicates;
-use crate::utils::write_output;
 use log::LevelFilter;
 use env_logger::Env;
+use crate::utils::output::write_output;
 
 fn run(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logger
@@ -49,6 +49,7 @@ mod integration_tests {
         let args = CliArgs::parse_from(vec![
             "program_name",
             "--source-path", "src",
+            "--languages", "rust",
             "--excludes", "tests,temp,build",
             "--output-format", "json",
             "--output-file", output_path,

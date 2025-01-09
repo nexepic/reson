@@ -1,9 +1,11 @@
 use crate::parser::ast_parser::{parse_file, get_parent_content};
-use crate::utils::{filter_files, compute_ast_fingerprint};
 use serde::Serialize;
 use std::collections::{HashMap, BTreeSet};
 use std::fs::File;
 use std::io::Write;
+use crate::utils::ast_collection::compute_ast_fingerprint;
+use crate::utils::filters::filter_files;
+use crate::utils::language_mapping::get_language_from_extension;
 
 #[derive(Serialize, Debug)]
 pub struct DuplicateBlock {
@@ -34,7 +36,7 @@ struct DebugData {
 }
 
 pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
-    let files = filter_files(&args.source_path, &args.excludes);
+    let files = filter_files(&args.source_path, &args.languages, &args.excludes);
     let mut fingerprints: HashMap<String, Vec<DuplicateBlock>> = HashMap::new();
     let mut parent_fingerprints: HashMap<String, ParentFingerprint> = HashMap::new();
     let mut exceeding_threshold_fingerprints: BTreeSet<String> = BTreeSet::new();
@@ -45,20 +47,8 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
             for block in blocks {
                 let block_length = block.end_line - block.start_line + 1;
                 if block_length >= args.threshold {
-                    let language = match file.extension().and_then(|ext| ext.to_str()) {
-                        Some("c") => "c",
-                        Some("cpp") => "cpp",
-                        Some("java") => "java",
-                        Some("js") => "js",
-                        Some("py") => "py",
-                        Some("go") => "go",
-                        Some("rs") => "rs",
-                        Some(ext) => {
-                            eprintln!("Unsupported file extension: {}", ext);
-                            return vec![];
-                        },
-                        None => return vec![],
-                    };
+                    let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+                    let language = get_language_from_extension(extension).unwrap_or_else(|| panic!("Unsupported file extension"));
 
                     let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content, language);
 
@@ -156,6 +146,7 @@ mod tests {
         let test_dir = setup_test_environment();
         let args = CliArgs {
             source_path: test_dir.clone(),
+            languages: vec!["rust".to_string()],
             excludes: vec![],
             output_format: "json".to_string(),
             output_file: None,
@@ -172,6 +163,7 @@ mod tests {
         let test_dir = setup_test_environment();
         let args = CliArgs {
             source_path: test_dir.clone(),
+            languages: vec!["rust".to_string()],
             excludes: vec![],
             output_format: "json".to_string(),
             output_file: None,
@@ -188,6 +180,7 @@ mod tests {
         let test_dir = setup_test_environment();
         let args = CliArgs {
             source_path: test_dir.clone(),
+            languages: vec!["rust".to_string()],
             excludes: vec!["./tests/rust/testA.rs".to_string(), "./tests/rust/testB.rs".to_string(), "./tests/rust/testC.rs".to_string()],
             output_format: "json".to_string(),
             output_file: None,
@@ -204,6 +197,7 @@ mod tests {
         let test_dir = setup_test_environment();
         let args = CliArgs {
             source_path: test_dir.clone(),
+            languages: vec!["rust".to_string()],
             excludes: vec![],
             output_format: "json".to_string(),
             output_file: None,

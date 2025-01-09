@@ -7,6 +7,7 @@ use tree_sitter_javascript::language as javascript_language;
 use tree_sitter_go::language as go_language;
 use tree_sitter_rust::language as rust_language;
 use std::fs;
+use crate::utils::language_mapping::get_language_from_extension;
 
 #[derive(Debug)]
 pub struct CodeBlock {
@@ -21,15 +22,17 @@ pub fn parse_file(file_path: &std::path::Path) -> Result<(Vec<CodeBlock>, Tree, 
     let source_code = fs::read_to_string(file_path).map_err(|_| "Failed to read file")?;
     let mut parser = Parser::new();
 
-    // Select language based on file extension
-    let language = match file_path.extension().and_then(|ext| ext.to_str()) {
-        Some("c") | Some("h") => c_language(),
-        Some("cpp") | Some("hpp") => cpp_language(),
-        Some("java") => java_language(),
-        Some("js") => javascript_language(),
-        Some("py") => python_language(),
-        Some("go") => go_language(),
-        Some("rs") => rust_language(),
+    let extension = file_path.extension().and_then(|ext| ext.to_str()).ok_or("Unsupported file extension")?;
+    let language = get_language_from_extension(extension).ok_or("Unsupported file extension")?;
+
+    let language = match language {
+        "c" => c_language(),
+        "cpp" => cpp_language(),
+        "java" => java_language(),
+        "javascript" => javascript_language(),
+        "py" => python_language(),
+        "golang" => go_language(),
+        "rust" => rust_language(),
         _ => return Err("Unsupported file extension".to_string()),
     };
 
@@ -96,13 +99,13 @@ pub fn get_parent_content(tree: &Tree, source: &str, block_start_byte: usize, bl
             let parent_content = if let Some(parent_node) = node.parent() {
                 let start_byte = parent_node.start_byte();
                 let end_byte = parent_node.end_byte();
-            
+
                 // Extract the content of the parent node
                 Some(source[start_byte..end_byte].to_string())
             } else {
                 None
             };
-            
+
             return parent_content;
         }
 
