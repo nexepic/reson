@@ -1,9 +1,9 @@
-use sha2::{Digest, Sha256};
+use blake3::Hasher;
 use tree_sitter::{Node, Parser};
 
 pub fn compute_ast_fingerprint(content: &str, language: &str) -> (String, String) {
     log::debug!("Computing AST fingerprint for content: {}", content);
-    let mut hasher = Sha256::new();
+    let mut hasher = Hasher::new();
 
     // Parse the AST from content
     let mut parser = Parser::new();
@@ -22,8 +22,8 @@ pub fn compute_ast_fingerprint(content: &str, language: &str) -> (String, String
     let ast_representation = collect_ast_content(parsed_tree.root_node(), content);
 
     log::debug!("AST representation: {}", ast_representation);
-    hasher.update(&ast_representation);
-    let fingerprint = format!("{:x}", hasher.finalize());
+    hasher.update(ast_representation.as_bytes());
+    let fingerprint = hasher.finalize().to_hex().to_string();
     log::debug!("Computed fingerprint: {}", fingerprint);
     (fingerprint, ast_representation)
 }
