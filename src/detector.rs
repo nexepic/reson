@@ -63,11 +63,8 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
         let results: Vec<_> = files
             .par_iter()
             .map(|file| {
-                // Update progress bar (only message is updated inside the parallel block)
-                pb.set_message(file.to_string_lossy().to_string());
-
                 // Process the file and gather duplicate data
-                if let Ok((blocks, tree, source_code)) = parse_file(file) {
+                let result = if let Ok((blocks, tree, source_code)) = parse_file(file) {
                     let mut local_fingerprints = HashMap::<String, Vec<DuplicateBlock>>::new();
                     let mut local_content_mappings = Vec::<(String, usize, usize, String, String, String)>::new();
                     let mut local_parent_fingerprints = HashMap::<String, ParentFingerprint>::new();
@@ -136,7 +133,13 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
                     Some((local_fingerprints, local_content_mappings, local_parent_fingerprints))
                 } else {
                     None
-                }
+                };
+
+                // Update progress bar
+                pb.inc(1);
+                pb.set_message(file.to_string_lossy().to_string());
+
+                result
             })
             .filter_map(|x| x)
             .collect();
