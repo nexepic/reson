@@ -40,7 +40,7 @@ struct DebugData {
 }
 
 pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
-    // Configure Rayon to use 30 threads
+    // Configure Rayon to use 10 threads
     let pool = ThreadPoolBuilder::new()
         .num_threads(10)
         .build()
@@ -61,68 +61,84 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
 
         // Use thread-local storage for intermediate data to reduce lock contention
         let results: Vec<_> = files
-            .par_chunks(10) // Process files in batches to reduce lock contention
-            .map(|file_batch| {
-                let mut local_fingerprints = HashMap::<String, Vec<DuplicateBlock>>::new();
-                let mut local_content_mappings = Vec::<(String, usize, usize, String, String, String)>::new();
-                let mut local_parent_fingerprints = HashMap::<String, ParentFingerprint>::new();
+            .par_iter()
+            .map(|file| {
+                // Update progress bar (only message is updated inside the parallel block)
+                pb.set_message(file.to_string_lossy().to_string());
 
-                for file in file_batch {
-                    pb.set_message(file.to_string_lossy().to_string());
-                    if let Ok((blocks, tree, source_code)) = parse_file(file) {
-                        for block in blocks {
-                            let block_length = block.end_line - block.start_line + 1;
-                            if block_length >= args.threshold {
-                                let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
-                                let language = get_language_from_extension(extension)
-                                    .unwrap_or_else(|| panic!("Unsupported file extension"));
+                // Process the file and gather duplicate data
+                if let Ok((blocks, tree, source_code)) = parse_file(file) {
+                    let mut local_fingerprints = HashMap::<String, Vec<DuplicateBlock>>::new();
+                    let mut local_content_mappings = Vec::<(String, usize, usize, String, String, String)>::new();
+                    let mut local_parent_fingerprints = HashMap::<String, ParentFingerprint>::new();
 
-                                let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content, language);
+                    for block in blocks {
+                        let block_length = block.end_line - block.start_line + 1;
+                        if block_length >= args.threshold {
+                            let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+                            let language = get_language_from_extension(extension)
+                                .unwrap_or_else(|| panic!("Unsupported file extension"));
 
-                                if let Some(existing_blocks) = local_fingerprints.get(&fingerprint) {
-                                    if existing_blocks.iter().any(|b| b.start_line_number == block.start_line && b.end_line_number == block.end_line && b.source_file == file.to_string_lossy().to_string()) {
-                                        continue; // Skip if block already exists
-                                    }
-                                }
+                            let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content, language);
 
-                                local_fingerprints
-                                    .entry(fingerprint.clone())
-                                    .or_default()
-                                    .push(DuplicateBlock {
-                                        start_line_number: block.start_line,
-                                        end_line_number: block.end_line,
-                                        source_file: file.to_string_lossy().to_string(),
-                                    });
+                            // Check for existing block duplicates
+                            if local_fingerprints
+                                .get(&fingerprint)
+                                .map_or(false, |existing_blocks| {
+                                    existing_blocks.iter().any(|b| {
+                                        b.start_line_number == block.start_line
+                                            && b.end_line_number == block.end_line
+                                            && b.source_file == file.to_string_lossy().to_string()
+                                    })
+                                })
+                            {
+                                continue;
+                            }
 
-                                local_content_mappings.push((
-                                    block.content.clone(),
-                                    block.start_line,
-                                    block.end_line,
+                            // Add block to local fingerprints
+                            local_fingerprints
+                                .entry(fingerprint.clone())
+                                .or_default()
+                                .push(DuplicateBlock {
+                                    start_line_number: block.start_line,
+                                    end_line_number: block.end_line,
+                                    source_file: file.to_string_lossy().to_string(),
+                                });
+
+                            // Add content mapping
+                            local_content_mappings.push((
+                                block.content.clone(),
+                                block.start_line,
+                                block.end_line,
+                                fingerprint.clone(),
+                                file.to_string_lossy().to_string(),
+                                ast_representation.clone(),
+                            ));
+
+                            // Process parent content
+                            if let Some(parent_content) =
+                                get_parent_content(&tree, &source_code, block.start_byte, block.end_byte)
+                            {
+                                let (parent_fingerprint, parent_ast) =
+                                    compute_ast_fingerprint(&parent_content, language);
+                                local_parent_fingerprints.insert(
                                     fingerprint.clone(),
-                                    file.to_string_lossy().to_string(),
-                                    ast_representation.clone(),
-                                ));
-
-                                if let Some(parent_content) = get_parent_content(&tree, &source_code, block.start_byte, block.end_byte) {
-                                    let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(&parent_content, language);
-                                    local_parent_fingerprints.insert(
-                                        fingerprint.clone(),
-                                        ParentFingerprint {
-                                            fingerprint: parent_fingerprint.clone(),
-                                            content: parent_content.clone(),
-                                            ast_content: ast_representation.clone(),
-                                        },
-                                    );
-                                }
+                                    ParentFingerprint {
+                                        fingerprint: parent_fingerprint,
+                                        content: parent_content,
+                                        ast_content: parent_ast,
+                                    },
+                                );
                             }
                         }
                     }
+
+                    Some((local_fingerprints, local_content_mappings, local_parent_fingerprints))
+                } else {
+                    None
                 }
-
-                pb.inc(file_batch.len() as u64);
-
-                (local_fingerprints, local_content_mappings, local_parent_fingerprints)
             })
+            .filter_map(|x| x)
             .collect();
 
         pb.finish_with_message("Processing complete");
