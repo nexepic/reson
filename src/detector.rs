@@ -6,6 +6,8 @@ use std::io::Write;
 use crate::utils::ast_collection::compute_ast_fingerprint;
 use crate::utils::filters::filter_files;
 use crate::utils::language_mapping::get_language_from_extension;
+use indicatif::ProgressBar;
+use indicatif::ProgressStyle;
 
 #[derive(Serialize, Debug)]
 pub struct DuplicateBlock {
@@ -42,7 +44,16 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
     let mut exceeding_threshold_fingerprints: BTreeSet<String> = BTreeSet::new();
     let mut content_fingerprint_mappings: Vec<(String, usize, usize, String, String, String)> = Vec::new();
 
+    let pb = ProgressBar::new(files.len() as u64);
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})")
+            .unwrap()
+            .progress_chars("#>-")
+    );
+
     for file in files {
+        pb.inc(1);
         if let Ok((blocks, tree, source_code)) = parse_file(&file) {
             for block in blocks {
                 let block_length = block.end_line - block.start_line + 1;
@@ -82,6 +93,8 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
             }
         }
     }
+
+    pb.finish_with_message("Processing complete");
 
     for (fingerprint, blocks) in &fingerprints {
         if blocks.len() > 1 && (blocks[0].end_line_number - blocks[0].start_line_number + 1) >= args.threshold {
@@ -127,7 +140,6 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
         })
         .collect()
 }
-
 
 #[cfg(test)]
 mod tests {
