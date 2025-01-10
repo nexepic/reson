@@ -42,7 +42,7 @@ struct DebugData {
 pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
     // Configure Rayon to use 30 threads
     let pool = ThreadPoolBuilder::new()
-        .num_threads(30)
+        .num_threads(10)
         .build()
         .unwrap();
 
@@ -61,14 +61,13 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
 
         // Use thread-local storage for intermediate data to reduce lock contention
         let results: Vec<_> = files
-            .par_iter()
-            .chunks(10) // Process files in batches to reduce lock contention
+            .par_chunks(10) // Process files in batches to reduce lock contention
             .map(|file_batch| {
                 let mut local_fingerprints = HashMap::<String, Vec<DuplicateBlock>>::new();
                 let mut local_content_mappings = Vec::<(String, usize, usize, String, String, String)>::new();
                 let mut local_parent_fingerprints = HashMap::<String, ParentFingerprint>::new();
 
-                for file in file_batch.clone() {
+                for file in file_batch {
                     pb.set_message(file.to_string_lossy().to_string());
                     if let Ok((blocks, tree, source_code)) = parse_file(file) {
                         for block in blocks {
