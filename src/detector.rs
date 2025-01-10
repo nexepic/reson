@@ -133,6 +133,9 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
                         }
                     }
 
+                    // Increment progress bar
+                    pb.inc(1);
+
                     Some((local_fingerprints, local_content_mappings, local_parent_fingerprints))
                 } else {
                     None
