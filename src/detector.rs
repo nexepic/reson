@@ -47,12 +47,13 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
     let pb = ProgressBar::new(files.len() as u64);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})")
+            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})\nProcessing file: {msg}")
             .unwrap()
             .progress_chars("#>-")
     );
-
+    
     for file in files {
+        pb.set_message(file.to_string_lossy().to_string());
         pb.inc(1);
         if let Ok((blocks, tree, source_code)) = parse_file(&file) {
             for block in blocks {
@@ -60,24 +61,24 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
                 if block_length >= args.threshold {
                     let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
                     let language = get_language_from_extension(extension).unwrap_or_else(|| panic!("Unsupported file extension"));
-
+    
                     let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content, language);
-
+    
                     // Check if the block already exists
                     if let Some(existing_blocks) = fingerprints.get(&fingerprint) {
                         if existing_blocks.iter().any(|b| b.start_line_number == block.start_line && b.end_line_number == block.end_line && b.source_file == file.to_string_lossy().to_string()) {
                             continue; // Skip insertion if the block already exists
                         }
                     }
-
+    
                     fingerprints.entry(fingerprint.clone()).or_default().push(DuplicateBlock {
                         start_line_number: block.start_line,
                         end_line_number: block.end_line,
                         source_file: file.to_string_lossy().to_string(),
                     });
-
+    
                     content_fingerprint_mappings.push((block.content.clone(), block.start_line, block.end_line, fingerprint.clone(), file.to_string_lossy().to_string(), ast_representation.clone()));
-
+    
                     if let Some(parent_content) = get_parent_content(&tree, &source_code, block.start_byte, block.end_byte) {
                         let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(&parent_content, language);
                         parent_fingerprints.insert(
@@ -93,7 +94,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
             }
         }
     }
-
+    
     pb.finish_with_message("Processing complete");
 
     for (fingerprint, blocks) in &fingerprints {
@@ -165,11 +166,11 @@ mod tests {
             threshold: 100,
             debug: false,
         };
-    
+
         let result = detect_duplicates(&args);
         assert!(result.is_empty());
     }
-    
+
     #[test]
     fn test_detect_duplicates_with_duplicates() {
         let test_dir = setup_test_environment();
@@ -182,11 +183,11 @@ mod tests {
             threshold: 5,
             debug: false,
         };
-    
+
         let result = detect_duplicates(&args);
         assert!(!result.is_empty());
     }
-    
+
     #[test]
     fn test_detect_duplicates_with_excludes() {
         let test_dir = setup_test_environment();
@@ -199,7 +200,7 @@ mod tests {
             threshold: 5,
             debug: false,
         };
-    
+
         let result = detect_duplicates(&args);
         assert!(result.is_empty());
     }
