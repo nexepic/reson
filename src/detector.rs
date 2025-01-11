@@ -39,7 +39,7 @@ struct DebugData {
     content_fingerprint_mappings: Vec<(String, usize, usize, String, String, String)>, // (content, start_line, end_line, fingerprint, file_name, ast_content)
 }
 
-pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
+pub fn detect_duplicates(args: crate::cli::CliArgs) -> Vec<DuplicateReport> {
     let files = filter_files(&args.source_path, &args.languages, &args.excludes);
     let chunk_size = (files.len() + 5 - 1) / 5;
 
@@ -64,7 +64,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
         let exceeding_threshold_fingerprints = Arc::clone(&exceeding_threshold_fingerprints);
         let content_fingerprint_mappings = Arc::clone(&content_fingerprint_mappings);
         let pb = pb.clone();
-        let args = args.clone();
+        let args = args.clone(); // Clone args for each thread
 
         let handle = thread::spawn(move || {
             for file in chunk {
@@ -196,7 +196,7 @@ mod tests {
             debug: false,
         };
 
-        let result = detect_duplicates(&args);
+        let result = detect_duplicates(args);
         assert!(result.is_empty());
     }
 
@@ -213,7 +213,7 @@ mod tests {
             debug: false,
         };
 
-        let result = detect_duplicates(&args);
+        let result = detect_duplicates(args);
         assert!(!result.is_empty());
     }
 
@@ -230,7 +230,7 @@ mod tests {
             debug: false,
         };
 
-        let result = detect_duplicates(&args);
+        let result = detect_duplicates(args);
         assert!(result.is_empty());
     }
 
@@ -247,7 +247,7 @@ mod tests {
             debug: true,
         };
 
-        let result = detect_duplicates(&args);
+        let result = detect_duplicates(args);
         assert!(!result.is_empty());
         assert!(Path::new("debug_data.json").exists());
         fs::remove_file("debug_data.json").unwrap();
