@@ -19,7 +19,7 @@ fn run(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
     env_logger::Builder::from_env(Env::default().default_filter_or(log_level.to_string())).init();
 
     // Execute duplicate detection
-    let duplicates = detect_duplicates(&args);
+    let duplicates = detect_duplicates(args.clone());
 
     // Output results based on format
     write_output(&duplicates, &args.output_format.as_str(), args.output_file.as_deref())?;

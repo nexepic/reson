@@ -1,7 +1,7 @@
 use clap::{Arg, Command, Parser};
 use std::path::PathBuf;
 
-#[derive(Parser)]
+#[derive(Parser, Clone)]
 pub struct CliArgs {
     #[clap(short = 's', long = "source-path", value_parser(clap::value_parser!(PathBuf)))]
     pub source_path: PathBuf,
