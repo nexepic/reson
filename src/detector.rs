@@ -1,15 +1,15 @@
-use crate::parser::ast_parser::{parse_file, get_parent_content};
+use crate::parser::ast_parser::{parse_file, get_parent_content, CodeBlock};
 use serde::Serialize;
 use std::collections::{HashMap, BTreeSet};
 use std::fs::File;
 use std::io::Write;
-use std::sync::{Arc, Mutex};
-use std::thread;
 use crate::utils::ast_collection::compute_ast_fingerprint;
 use crate::utils::filters::filter_files;
 use crate::utils::language_mapping::get_language_from_extension;
 use indicatif::ProgressBar;
 use indicatif::ProgressStyle;
+use tree_sitter::Tree;
+use rayon::prelude::*;
 
 #[derive(Serialize, Debug)]
 pub struct DuplicateBlock {
@@ -25,7 +25,7 @@ pub struct DuplicateReport {
     pub blocks: Vec<DuplicateBlock>,
 }
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone)]
 struct ParentFingerprint {
     fingerprint: String,
     content: String,
@@ -39,15 +39,8 @@ struct DebugData {
     content_fingerprint_mappings: Vec<(String, usize, usize, String, String, String)>, // (content, start_line, end_line, fingerprint, file_name, ast_content)
 }
 
-pub fn detect_duplicates(args: crate::cli::CliArgs) -> Vec<DuplicateReport> {
+pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
     let files = filter_files(&args.source_path, &args.languages, &args.excludes);
-    let chunk_size = (files.len() + 5 - 1) / 5;
-
-    let fingerprints: Arc<Mutex<HashMap<String, Vec<DuplicateBlock>>>> = Arc::new(Mutex::new(HashMap::new()));
-    let parent_fingerprints = Arc::new(Mutex::new(HashMap::new()));
-    let exceeding_threshold_fingerprints = Arc::new(Mutex::new(BTreeSet::new()));
-    let content_fingerprint_mappings = Arc::new(Mutex::new(Vec::new()));
-
     let pb = ProgressBar::new(files.len() as u64);
     pb.set_style(
         ProgressStyle::default_bar()
@@ -56,117 +49,162 @@ pub fn detect_duplicates(args: crate::cli::CliArgs) -> Vec<DuplicateReport> {
             .progress_chars("#>-"),
     );
 
-    let mut handles = vec![];
-    for chunk in files.chunks(chunk_size) {
-        let chunk = chunk.to_vec();
-        let fingerprints = Arc::clone(&fingerprints);
-        let parent_fingerprints = Arc::clone(&parent_fingerprints);
-        let exceeding_threshold_fingerprints = Arc::clone(&exceeding_threshold_fingerprints);
-        let content_fingerprint_mappings = Arc::clone(&content_fingerprint_mappings);
-        let pb = pb.clone();
-        let args = args.clone(); // Clone args for each thread
-
-        let handle = thread::spawn(move || {
-            for file in chunk {
-                pb.set_message(file.to_string_lossy().to_string());
-                pb.inc(1);
-                if let Ok((blocks, tree, source_code)) = parse_file(&file) {
-                    for block in blocks {
-                        let block_length = block.end_line - block.start_line + 1;
-                        if block_length >= args.threshold {
-                            let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
-                            let language = get_language_from_extension(extension).unwrap_or_else(|| panic!("Unsupported file extension"));
-
-                            let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content, language);
-
-                            let mut fingerprints_guard = fingerprints.lock().unwrap();
-                            if let Some(existing_blocks) = fingerprints_guard.get(&fingerprint) {
-                                if existing_blocks.iter().any(|b| b.start_line_number == block.start_line && b.end_line_number == block.end_line && b.source_file == file.to_string_lossy().to_string()) {
-                                    continue;
-                                }
-                            }
-
-                            fingerprints_guard.entry(fingerprint.clone()).or_default().push(DuplicateBlock {
-                                start_line_number: block.start_line,
-                                end_line_number: block.end_line,
-                                source_file: file.to_string_lossy().to_string(),
-                            });
-
-                            content_fingerprint_mappings.lock().unwrap().push((
-                                block.content.clone(),
-                                block.start_line,
-                                block.end_line,
-                                fingerprint.clone(),
-                                file.to_string_lossy().to_string(),
-                                ast_representation.clone(),
-                            ));
-
-                            if let Some(parent_content) = get_parent_content(&tree, &source_code, block.start_byte, block.end_byte) {
-                                let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(&parent_content, language);
-                                parent_fingerprints.lock().unwrap().insert(
-                                    fingerprint.clone(),
-                                    ParentFingerprint {
-                                        fingerprint: parent_fingerprint.clone(),
-                                        content: parent_content.clone(),
-                                        ast_content: ast_representation.clone(),
-                                    },
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        });
-
-        handles.push(handle);
-    }
-
-    for handle in handles {
-        handle.join().unwrap();
-    }
+    // 并行处理每个文件
+    let results: Vec<FileProcessingResult> = files
+        .par_iter()
+        .map(|file| {
+            pb.set_message(file.to_string_lossy().to_string());
+            let result = if let Ok((blocks, tree, source_code)) = parse_file(file) {
+                process_file(file, blocks, tree, source_code, args)
+            } else {
+                None
+            };
+            pb.inc(1);
+            result
+        })
+        .filter_map(|res| res)
+        .collect();
 
     pb.finish_with_message("Processing complete");
 
-    let fingerprints = Arc::try_unwrap(fingerprints).unwrap().into_inner().unwrap();
-    let parent_fingerprints = Arc::try_unwrap(parent_fingerprints).unwrap().into_inner().unwrap();
-    let exceeding_threshold_fingerprints = Arc::try_unwrap(exceeding_threshold_fingerprints).unwrap().into_inner().unwrap();
-    let content_fingerprint_mappings = Arc::try_unwrap(content_fingerprint_mappings).unwrap().into_inner().unwrap();
+    // 合并结果
+    let mut fingerprints: HashMap<String, Vec<DuplicateBlock>> = HashMap::new();
+    let mut parent_fingerprints: HashMap<String, ParentFingerprint> = HashMap::new();
+    let mut content_fingerprint_mappings: Vec<(String, usize, usize, String, String, String)> =
+        Vec::new();
 
-    let debug_data = DebugData {
-        parent_fingerprints: parent_fingerprints.clone(),
-        exceeding_threshold_fingerprints: exceeding_threshold_fingerprints.clone(),
-        content_fingerprint_mappings: content_fingerprint_mappings.clone(),
-    };
+    for result in results {
+        fingerprints.extend(result.fingerprints);
+        parent_fingerprints.extend(result.parent_fingerprints);
+        content_fingerprint_mappings.extend(result.content_fingerprint_mappings);
+    }
 
+    // 计算超出阈值的指纹
+    let exceeding_threshold_fingerprints = calculate_exceeding_threshold_fingerprints(
+        &fingerprints,
+        args.threshold,
+    );
+
+    // 调试数据输出（可选）
     if args.debug {
+        let debug_data = DebugData {
+            parent_fingerprints: parent_fingerprints.clone(),
+            exceeding_threshold_fingerprints: exceeding_threshold_fingerprints.clone(),
+            content_fingerprint_mappings: content_fingerprint_mappings.clone(),
+        };
         if let Ok(json) = serde_json::to_string_pretty(&debug_data) {
             let mut file = File::create("debug_data.json").expect("Failed to create file");
             file.write_all(json.as_bytes()).expect("Failed to write to file");
         }
     }
 
+    // 生成重复报告
+    create_duplicate_reports(
+        fingerprints,
+        parent_fingerprints,
+        exceeding_threshold_fingerprints,
+        args,
+    )
+}
+
+struct FileProcessingResult {
+    fingerprints: HashMap<String, Vec<DuplicateBlock>>,
+    parent_fingerprints: HashMap<String, ParentFingerprint>,
+    content_fingerprint_mappings: Vec<(String, usize, usize, String, String, String)>,
+}
+
+// 单个文件的处理逻辑
+fn process_file(
+    file: &std::path::Path,
+    blocks: Vec<CodeBlock>,
+    tree: Tree,
+    source_code: String,
+    args: &crate::cli::CliArgs,
+) -> Option<FileProcessingResult> {
+    let mut fingerprints: HashMap<String, Vec<DuplicateBlock>> = HashMap::new();
+    let mut parent_fingerprints = HashMap::new();
+    let mut content_fingerprint_mappings = Vec::new();
+
+    for block in blocks {
+        let block_length = block.end_line - block.start_line + 1;
+        if block_length >= args.threshold {
+            let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+            let language = get_language_from_extension(extension).unwrap_or_else(|| panic!("Unsupported file extension"));
+
+            let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content, language);
+
+            fingerprints.entry(fingerprint.clone()).or_default().push(DuplicateBlock {
+                start_line_number: block.start_line,
+                end_line_number: block.end_line,
+                source_file: file.to_string_lossy().to_string(),
+            });
+
+            content_fingerprint_mappings.push((
+                block.content.clone(),
+                block.start_line,
+                block.end_line,
+                fingerprint.clone(),
+                file.to_string_lossy().to_string(),
+                ast_representation.clone(),
+            ));
+
+            if let Some(parent_content) = get_parent_content(&tree, &source_code, block.start_byte, block.end_byte) {
+                let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(&parent_content, language);
+                parent_fingerprints.insert(
+                    fingerprint.clone(),
+                    ParentFingerprint {
+                        fingerprint: parent_fingerprint.clone(),
+                        content: parent_content.clone(),
+                        ast_content: ast_representation.clone(),
+                    },
+                );
+            }
+        }
+    }
+
+    Some(FileProcessingResult {
+        fingerprints,
+        parent_fingerprints,
+        content_fingerprint_mappings,
+    })
+}
+
+// 超出阈值的指纹计算
+fn calculate_exceeding_threshold_fingerprints(
+    fingerprints: &HashMap<String, Vec<DuplicateBlock>>,
+    threshold: usize,
+) -> BTreeSet<String> {
+    fingerprints
+        .iter()
+        .filter_map(|(fingerprint, blocks)| {
+            if blocks.len() > 1 && (blocks[0].end_line_number - blocks[0].start_line_number + 1) >= threshold {
+                Some(fingerprint.clone())
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+// 创建重复报告
+fn create_duplicate_reports(
+    fingerprints: HashMap<String, Vec<DuplicateBlock>>,
+    parent_fingerprints: HashMap<String, ParentFingerprint>,
+    exceeding_threshold_fingerprints: BTreeSet<String>,
+    args: &crate::cli::CliArgs,
+) -> Vec<DuplicateReport> {
     fingerprints
         .into_iter()
         .filter(|(fingerprint, blocks)| {
-            let retain = blocks.len() > 1
+            blocks.len() > 1
                 && (blocks[0].end_line_number - blocks[0].start_line_number + 1) >= args.threshold
                 && parent_fingerprints.get(fingerprint)
-                .map_or(true, |pf| !exceeding_threshold_fingerprints.contains(&pf.fingerprint));
-            log::debug!(
-                "Filtering fingerprint: {}, retain: {}, blocks: {:?}",
-                fingerprint,
-                retain,
-                blocks
-            );
-            retain
+                .map_or(true, |pf| !exceeding_threshold_fingerprints.contains(&pf.fingerprint))
         })
-        .map(|(fingerprint, blocks)| {
-            log::debug!("Creating DuplicateReport for fingerprint: {}", fingerprint);
-            DuplicateReport {
-                fingerprint,
-                line_count: blocks[0].end_line_number - blocks[0].start_line_number + 1,
-                blocks,
-            }
+        .map(|(fingerprint, blocks)| DuplicateReport {
+            fingerprint,
+            line_count: blocks[0].end_line_number - blocks[0].start_line_number + 1,
+            blocks,
         })
         .collect()
 }
@@ -196,7 +234,7 @@ mod tests {
             debug: false,
         };
 
-        let result = detect_duplicates(args);
+        let result = detect_duplicates(&args);
         assert!(result.is_empty());
     }
 
@@ -213,7 +251,7 @@ mod tests {
             debug: false,
         };
 
-        let result = detect_duplicates(args);
+        let result = detect_duplicates(&args);
         assert!(!result.is_empty());
     }
 
@@ -230,7 +268,7 @@ mod tests {
             debug: false,
         };
 
-        let result = detect_duplicates(args);
+        let result = detect_duplicates(&args);
         assert!(result.is_empty());
     }
 
@@ -247,7 +285,7 @@ mod tests {
             debug: true,
         };
 
-        let result = detect_duplicates(args);
+        let result = detect_duplicates(&args);
         assert!(!result.is_empty());
         assert!(Path::new("debug_data.json").exists());
         fs::remove_file("debug_data.json").unwrap();
