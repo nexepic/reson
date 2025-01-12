@@ -54,8 +54,11 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
     
     for file in files {
         pb.set_message(file.to_string_lossy().to_string());
+        log::info!("Processing file: {}", file.to_string_lossy());
         if let Ok((blocks, tree, source_code)) = parse_file(&file) {
-            for block in blocks {
+            log::debug!("File parsed successfully");
+            for (i, block) in blocks.iter().enumerate() {
+                pb.set_message(format!("{} (block {}/{})", file.to_string_lossy(), i + 1, blocks.len()));
                 let block_length = block.end_line - block.start_line + 1;
                 if block_length >= args.threshold {
                     let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
