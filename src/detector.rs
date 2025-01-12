@@ -54,7 +54,6 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
     
     for file in files {
         pb.set_message(file.to_string_lossy().to_string());
-        pb.inc(1);
         if let Ok((blocks, tree, source_code)) = parse_file(&file) {
             for block in blocks {
                 let block_length = block.end_line - block.start_line + 1;
@@ -93,8 +92,9 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
                 }
             }
         }
+        pb.inc(1);
     }
-    
+
     pb.finish_with_message("Processing complete");
 
     for (fingerprint, blocks) in &fingerprints {
