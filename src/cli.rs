@@ -123,7 +123,7 @@ impl CliArgs {
         }
         Ok(())
     }
-    
+
     fn parse_languages(matches: &clap::ArgMatches) -> Vec<String> {
         matches
             .get_one::<String>("languages")
@@ -220,7 +220,7 @@ mod tests {
         let source_path = matches.get_one::<PathBuf>("source-path").unwrap();
         assert_eq!(source_path, &PathBuf::from("src"));
     }
-    
+
     #[test]
     fn test_languages_parsing() {
         let matches = CliArgs::command().try_get_matches_from(vec![
@@ -294,7 +294,7 @@ mod tests {
         let threshold = CliArgs::parse_threshold(&matches);
         assert_eq!(threshold, 10);
     }
-    
+
     #[test]
     fn test_parse_threads() {
         let matches = CliArgs::command().try_get_matches_from(vec![
