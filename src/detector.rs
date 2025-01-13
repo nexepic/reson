@@ -49,22 +49,29 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Vec<
     let pb = ProgressBar::new(files.len() as u64);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len}\nProcessing file: {msg}")
+            .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} \nProcessing file: {msg}")
             .unwrap()
             .progress_chars("#>-")
     );
 
     // Create a custom thread pool with the specified number of threads
-    let pool = ThreadPoolBuilder::new().num_threads(num_threads).build().unwrap();
+    let pool = ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .stack_size(100 * 1024 * 1024)
+        .build()
+        .unwrap();
 
     for file in files {
         pb.set_message(file.to_string_lossy().to_string());
+
+        // Parse file and store blocks on the heap using Box
         if let Ok((blocks, tree, source_code)) = parse_file(&file) {
             let file_path = file.to_string_lossy().to_string();
             let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
             let language = get_language_from_extension(extension).unwrap_or_else(|| panic!("Unsupported file extension"));
 
-            // Use the custom thread pool for parallel processing
+            // Move blocks to heap to avoid stack overflow
+            let blocks = Box::new(blocks);
             let processed_blocks: Vec<(String, Option<ParentFingerprint>, DuplicateBlock)> = pool.install(|| {
                 blocks.par_iter()
                     .filter_map(|block| {
