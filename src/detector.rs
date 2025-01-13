@@ -39,13 +39,6 @@ struct DebugData {
     content_fingerprint_mappings: Vec<(String, usize, usize, String, String, String)>, // (content, start_line, end_line, fingerprint, file_name, ast_content)
 }
 
-fn create_cpu_bound_thread_pool(num_threads: usize) -> rayon::ThreadPool {
-    ThreadPoolBuilder::new()
-        .num_threads(num_threads)
-        .build()
-        .expect("Failed to create thread pool")
-}
-
 pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Vec<DuplicateReport> {
     let files = filter_files(&args.source_path, &args.languages, &args.excludes);
     let mut fingerprints: HashMap<String, Vec<DuplicateBlock>> = HashMap::new();
@@ -56,13 +49,13 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Vec<
     let pb = ProgressBar::new(files.len() as u64);
     pb.set_style(
         ProgressStyle::default_bar()
-            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})\nProcessing file: {msg}")
+            .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len}\nProcessing file: {msg}")
             .unwrap()
             .progress_chars("#>-")
     );
 
-    // Create a custom CPU-bound thread pool
-    let pool = create_cpu_bound_thread_pool(num_threads);
+    // Create a custom thread pool with the specified number of threads
+    let pool = ThreadPoolBuilder::new().num_threads(num_threads).build().unwrap();
 
     for file in files {
         pb.set_message(file.to_string_lossy().to_string());
@@ -71,48 +64,44 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Vec<
             let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
             let language = get_language_from_extension(extension).unwrap_or_else(|| panic!("Unsupported file extension"));
 
-            // Split blocks into chunks for parallel processing
-            let chunk_size = (blocks.len() + num_threads - 1) / num_threads;
-            let block_chunks: Vec<_> = blocks.chunks(chunk_size).collect();
-
+            // Use the custom thread pool for parallel processing
             let processed_blocks: Vec<(String, Option<ParentFingerprint>, DuplicateBlock)> = pool.install(|| {
-                block_chunks.par_iter()
-                    .flat_map(|chunk| {
-                        chunk.iter().filter_map(|block| {
-                            let block_length = block.end_line - block.start_line + 1;
-                            if block_length < args.threshold {
-                                return None;
+                blocks.par_iter()
+                    .filter_map(|block| {
+                        let block_length = block.end_line - block.start_line + 1;
+                        if block_length < args.threshold {
+                            return None;
+                        }
+
+                        let (fingerprint, _ast_representation) = compute_ast_fingerprint(&block.content, language);
+
+                        // Check if the block already exists
+                        if let Some(existing_blocks) = fingerprints.get(&fingerprint) {
+                            if existing_blocks.iter().any(|b| b.start_line_number == block.start_line && b.end_line_number == block.end_line && b.source_file == file_path) {
+                                return None; // Skip insertion if the block already exists
                             }
+                        }
 
-                            let (fingerprint, _ast_representation) = compute_ast_fingerprint(&block.content, language);
+                        let duplicate_block = DuplicateBlock {
+                            start_line_number: block.start_line,
+                            end_line_number: block.end_line,
+                            source_file: file_path.clone(),
+                        };
 
-                            // Check if the block already exists
-                            if let Some(existing_blocks) = fingerprints.get(&fingerprint) {
-                                if existing_blocks.iter().any(|b| b.start_line_number == block.start_line && b.end_line_number == block.end_line && b.source_file == file_path) {
-                                    return None; // Skip insertion if the block already exists
-                                }
-                            }
+                        let parent_fingerprint = if let Some(parent_content) = get_parent_content(&tree, &source_code, block.start_byte, block.end_byte) {
+                            let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(&parent_content, language);
+                            Some(ParentFingerprint {
+                                fingerprint: parent_fingerprint,
+                                content: parent_content,
+                                ast_content: ast_representation,
+                            })
+                        } else {
+                            None
+                        };
 
-                            let duplicate_block = DuplicateBlock {
-                                start_line_number: block.start_line,
-                                end_line_number: block.end_line,
-                                source_file: file_path.clone(),
-                            };
-
-                            let parent_fingerprint = if let Some(parent_content) = get_parent_content(&tree, &source_code, block.start_byte, block.end_byte) {
-                                let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(&parent_content, language);
-                                Some(ParentFingerprint {
-                                    fingerprint: parent_fingerprint,
-                                    content: parent_content,
-                                    ast_content: ast_representation,
-                                })
-                            } else {
-                                None
-                            };
-
-                            Some((fingerprint, parent_fingerprint, duplicate_block))
-                        }).collect::<Vec<_>>()
-                    }).collect()
+                        Some((fingerprint, parent_fingerprint, duplicate_block))
+                    })
+                    .collect()
             });
 
             for (fingerprint, parent_fingerprint, duplicate_block) in processed_blocks {
@@ -126,7 +115,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Vec<
         pb.inc(1);
     }
 
-    pb.finish_with_message("Processing complete");
+    pb.finish_with_message(format!("Processing complete in {:.2} seconds", pb.elapsed().as_secs_f64()));
 
     for (fingerprint, blocks) in &fingerprints {
         if blocks.len() > 1 && (blocks[0].end_line_number - blocks[0].start_line_number + 1) >= args.threshold {
