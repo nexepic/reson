@@ -40,7 +40,7 @@ struct DebugData {
 }
 
 pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Vec<DuplicateReport> {
-    let files = filter_files(&args.source_path, &args.languages, &args.excludes);
+    let files = filter_files(&args.source_path, &args.languages, &args.excludes, args.max_file_size);
     let mut fingerprints: HashMap<String, Vec<DuplicateBlock>> = HashMap::new();
     let mut parent_fingerprints: HashMap<String, ParentFingerprint> = HashMap::new();
     let mut exceeding_threshold_fingerprints: BTreeSet<String> = BTreeSet::new();
@@ -192,6 +192,7 @@ mod tests {
             output_file: None,
             threshold: 100,
             threads: 1,
+            max_file_size: 1048576,
             debug: false,
         };
 
@@ -210,6 +211,7 @@ mod tests {
             output_file: None,
             threshold: 5,
             threads: 1,
+            max_file_size: 1048576,
             debug: false,
         };
 
@@ -228,6 +230,7 @@ mod tests {
             output_file: None,
             threshold: 5,
             threads: 1,
+            max_file_size: 1048576,
             debug: false,
         };
 
@@ -246,6 +249,7 @@ mod tests {
             output_file: None,
             threshold: 1,
             threads: 1,
+            max_file_size: 1048576,
             debug: true,
         };
 

@@ -24,6 +24,9 @@ pub struct CliArgs {
     #[clap(short = 'n', long = "threads", default_value = "10", value_parser(clap::value_parser!(usize)))]
     pub threads: usize,
 
+    #[clap(long = "max-file-size", value_parser(clap::value_parser!(u64)), default_value = "1048576")] // 1 MB default
+    pub max_file_size: u64,
+
     #[clap(long = "debug")]
     pub debug: bool,
 }
@@ -97,6 +100,14 @@ impl CliArgs {
                     .value_parser(clap::value_parser!(usize)),
             )
             .arg(
+                Arg::new("max-file-size")
+                    .long("max-file-size")
+                    .value_name("MAX_FILE_SIZE")
+                    .help("Maximum file size in bytes to parse")
+                    .default_value("1048576")
+                    .value_parser(clap::value_parser!(u64)),
+            )
+            .arg(
                 Arg::new("debug")
                     .long("debug")
                     .help("Enable debug mode")
@@ -152,12 +163,16 @@ impl CliArgs {
         *matches.get_one::<usize>("threshold").unwrap()
     }
 
-    fn parse_debug(matches: &clap::ArgMatches) -> bool {
-        *matches.get_one::<bool>("debug").unwrap_or(&false)
-    }
-
     fn parse_threads(matches: &clap::ArgMatches) -> usize {
         *matches.get_one::<usize>("threads").unwrap()
+    }
+    
+    fn parse_max_file_size(matches: &clap::ArgMatches) -> u64 {
+        *matches.get_one::<u64>("max-file-size").unwrap()
+    }
+
+    fn parse_debug(matches: &clap::ArgMatches) -> bool {
+        *matches.get_one::<bool>("debug").unwrap_or(&false)
     }
 
     fn parse_cli_args(matches: &clap::ArgMatches) -> CliArgs {
@@ -172,6 +187,7 @@ impl CliArgs {
             output_file: CliArgs::parse_output_file(matches),
             threshold: CliArgs::parse_threshold(matches),
             threads: CliArgs::parse_threads(matches),
+            max_file_size: CliArgs::parse_max_file_size(matches),
             debug: CliArgs::parse_debug(matches),
         }
     }
@@ -307,6 +323,20 @@ mod tests {
 
         let threads = CliArgs::parse_threads(&matches);
         assert_eq!(threads, 10);
+    }
+    
+    #[test]
+    fn test_parse_max_file_size() {
+        let matches = CliArgs::command().try_get_matches_from(vec![
+            "code-duplication-detector",
+            "--source-path",
+            "src",
+            "--max-file-size",
+            "1048576",
+        ]).unwrap();
+
+        let max_file_size = CliArgs::parse_max_file_size(&matches);
+        assert_eq!(max_file_size, 1048576);
     }
 
     #[test]
