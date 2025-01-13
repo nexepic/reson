@@ -6,7 +6,7 @@ use std::io::Write;
 use crate::utils::ast_collection::compute_ast_fingerprint;
 use crate::utils::filters::filter_files;
 use crate::utils::language_mapping::get_language_from_extension;
-use indicatif::ProgressBar;
+use indicatif::{MultiProgress, ProgressBar};
 use indicatif::ProgressStyle;
 use rayon::prelude::*;
 
@@ -45,53 +45,93 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
     let mut exceeding_threshold_fingerprints: BTreeSet<String> = BTreeSet::new();
     let mut content_fingerprint_mappings: Vec<(String, usize, usize, String, String, String)> = Vec::new();
 
-    let pb = ProgressBar::new(files.len() as u64);
+    // MultiProgress for managing multiple progress bars
+    let multi_progress = MultiProgress::new();
+
+    // Main file-level progress bar
+    let pb = multi_progress.add(ProgressBar::new(files.len() as u64));
     pb.set_style(
         ProgressStyle::default_bar()
             .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})\nProcessing file: {msg}")
             .unwrap()
-            .progress_chars("#>-")
+            .progress_chars("#>-"),
     );
 
     for file in files {
         pb.set_message(file.to_string_lossy().to_string());
+
         if let Ok((blocks, tree, source_code)) = parse_file(&file) {
-            let blocks_vec: Vec<_> = blocks.par_iter().collect();
-            for (i, block) in blocks_vec.iter().enumerate() {
-                pb.set_message(format!("{} (block {}/{})", file.to_string_lossy(), i + 1, blocks.len()));
-                let block_length = block.end_line - block.start_line + 1;
-                if block_length >= args.threshold {
-                    let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
-                    let language = get_language_from_extension(extension).unwrap_or_else(|| panic!("Unsupported file extension"));
-            
-                    let (fingerprint, ast_representation) = compute_ast_fingerprint(&block.content, language);
-            
+            let file_path = file.to_string_lossy().to_string();
+            let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+            let language = get_language_from_extension(extension).unwrap_or_else(|| panic!("Unsupported file extension"));
+
+            // Block-level progress bar for each file
+            // let block_pb = multi_progress.add(ProgressBar::new(blocks.len() as u64));
+            // block_pb.set_style(
+            //     ProgressStyle::default_bar()
+            //         .template("{spinner:.yellow} [Block {pos}/{len}] {msg}")
+            //         .unwrap()
+            //         .progress_chars("#>-"),
+            // );
+
+            // Parallel processing of blocks
+            let processed_blocks: Vec<(String, Option<ParentFingerprint>, DuplicateBlock)> = blocks
+                .par_iter()
+                .enumerate()
+                .filter_map(|(i, block)| {
+                    // block_pb.set_message(format!("Processing block {}/{}", i + 1, blocks.len()));
+                    let block_length = block.end_line - block.start_line + 1;
+                    if block_length < args.threshold {
+                        // block_pb.inc(1);
+                        return None;
+                    }
+
+                    let (fingerprint, _ast_representation) = compute_ast_fingerprint(&block.content, language);
+
                     // Check if the block already exists
                     if let Some(existing_blocks) = fingerprints.get(&fingerprint) {
-                        if existing_blocks.iter().any(|b| b.start_line_number == block.start_line && b.end_line_number == block.end_line && b.source_file == file.to_string_lossy().to_string()) {
-                            continue; // Skip insertion if the block already exists
+                        if existing_blocks.iter().any(|b| b.start_line_number == block.start_line
+                            && b.end_line_number == block.end_line
+                            && b.source_file == file_path)
+                        {
+                            // block_pb.inc(1);
+                            return None; // Skip insertion if the block already exists
                         }
                     }
-            
-                    fingerprints.entry(fingerprint.clone()).or_default().push(DuplicateBlock {
+
+                    let duplicate_block = DuplicateBlock {
                         start_line_number: block.start_line,
                         end_line_number: block.end_line,
-                        source_file: file.to_string_lossy().to_string(),
-                    });
-            
-                    content_fingerprint_mappings.push((block.content.clone(), block.start_line, block.end_line, fingerprint.clone(), file.to_string_lossy().to_string(), ast_representation.clone()));
-            
-                    if let Some(parent_content) = get_parent_content(&tree, &source_code, block.start_byte, block.end_byte) {
-                        let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(&parent_content, language);
-                        parent_fingerprints.insert(
-                            fingerprint.clone(),
-                            ParentFingerprint {
-                                fingerprint: parent_fingerprint.clone(),
-                                content: parent_content.clone(),
-                                ast_content: ast_representation.clone(),
-                            },
-                        );
-                    }
+                        source_file: file_path.clone(),
+                    };
+
+                    let parent_fingerprint = if let Some(parent_content) =
+                        get_parent_content(&tree, &source_code, block.start_byte, block.end_byte)
+                    {
+                        let (parent_fingerprint, ast_representation) =
+                            compute_ast_fingerprint(&parent_content, language);
+                        Some(ParentFingerprint {
+                            fingerprint: parent_fingerprint,
+                            content: parent_content,
+                            ast_content: ast_representation,
+                        })
+                    } else {
+                        None
+                    };
+
+                    // block_pb.inc(1);
+                    Some((fingerprint, parent_fingerprint, duplicate_block))
+                })
+                .collect();
+
+            // block_pb.finish_with_message("Block processing complete");
+
+            // Add results to global maps
+            for (fingerprint, parent_fingerprint, duplicate_block) in processed_blocks {
+                fingerprints.entry(fingerprint.clone()).or_default().push(duplicate_block);
+
+                if let Some(parent) = parent_fingerprint {
+                    parent_fingerprints.insert(fingerprint.clone(), parent);
                 }
             }
         }
@@ -99,7 +139,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs) -> Vec<DuplicateReport> {
     }
 
     pb.finish_with_message("Processing complete");
-
+    
     for (fingerprint, blocks) in &fingerprints {
         if blocks.len() > 1 && (blocks[0].end_line_number - blocks[0].start_line_number + 1) >= args.threshold {
             exceeding_threshold_fingerprints.insert(fingerprint.clone());
