@@ -1,10 +1,11 @@
+use std::fs;
 use std::path::{Path, PathBuf};
 use glob::Pattern;
 use walkdir::WalkDir;
 use crate::utils::language_mapping::get_language_mapping;
 
 /// Filters files based on glob patterns and returns matched file paths
-pub fn filter_files(source_path: &Path, languages: &[String], excludes: &[String]) -> Vec<PathBuf> {
+pub fn filter_files(source_path: &Path, languages: &[String], excludes: &[String], max_file_size: u64) -> Vec<PathBuf> {
     let language_mapping = get_language_mapping();
     let valid_extensions: Vec<&str> = if languages.is_empty() {
         language_mapping.values().flatten().map(|s| *s).collect()
@@ -18,7 +19,10 @@ pub fn filter_files(source_path: &Path, languages: &[String], excludes: &[String
 
     if source_path.is_file() {
         let extension = source_path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
-        return if excludes.iter().any(|pattern| Pattern::new(pattern).unwrap().matches_path(source_path)) || !valid_extensions.contains(&extension) {
+        let metadata = fs::metadata(source_path).unwrap();
+        return if excludes.iter().any(|pattern| Pattern::new(pattern).unwrap().matches_path(source_path))
+            || !valid_extensions.contains(&extension)
+            || metadata.len() > max_file_size {
             vec![]
         } else {
             vec![source_path.to_path_buf()]
@@ -32,7 +36,10 @@ pub fn filter_files(source_path: &Path, languages: &[String], excludes: &[String
         .map(|entry| entry.path().to_path_buf())
         .filter(|file| {
             let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
-            !excludes.iter().any(|pattern| Pattern::new(pattern).unwrap().matches_path(file)) && valid_extensions.contains(&extension)
+            let metadata = fs::metadata(file).unwrap();
+            !excludes.iter().any(|pattern| Pattern::new(pattern).unwrap().matches_path(file))
+                && valid_extensions.contains(&extension)
+                && metadata.len() <= max_file_size
         })
         .collect()
 }
@@ -40,7 +47,8 @@ pub fn filter_files(source_path: &Path, languages: &[String], excludes: &[String
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile;
+    use std::fs::File;
+    use std::io::Write;
 
     #[test]
     fn test_filter_files_with_single_file() {
@@ -48,7 +56,8 @@ mod tests {
 
         let excludes = vec!["*.rs".to_string()];
         let languages = vec!["rust".to_string()];
-        let filtered_files = filter_files(&file_path, &languages, &excludes);
+        let max_file_size = 1048576;
+        let filtered_files = filter_files(&file_path, &languages, &excludes, max_file_size);
 
         assert!(filtered_files.is_empty());
     }
@@ -59,10 +68,47 @@ mod tests {
 
         let excludes = vec!["*.txt".to_string()];
         let languages = vec!["rust".to_string()];
-        let filtered_files = filter_files(&file_path, &languages, &excludes);
+        let max_file_size = 1048576;
+        let filtered_files = filter_files(&file_path, &languages, &excludes, max_file_size);
 
         assert_eq!(filtered_files.len(), 1);
         assert_eq!(filtered_files[0], file_path);
+    }
+
+    #[test]
+    fn test_filter_files_with_large_file() {
+        let test_dir = Path::new("tests/rust");
+        let large_file_path = test_dir.join("large_file.rs");
+
+        // Create a large file for testing
+        let mut file = File::create(&large_file_path).unwrap();
+        file.write_all(&vec![0; 2 * 1048576]).unwrap(); // 2 MB file
+
+        let excludes = vec![];
+        let languages = vec!["rust".to_string()];
+        let max_file_size = 1048576; // 1 MB
+        let filtered_files = filter_files(test_dir, &languages, &excludes, max_file_size);
+
+        assert!(!filtered_files.contains(&large_file_path));
+
+        // Clean up
+        fs::remove_file(large_file_path).unwrap();
+    }
+
+    #[test]
+    fn test_filter_files_with_small_file() {
+        let test_dir = Path::new("tests/rust");
+        let small_file_path = test_dir.join("testA.rs");
+        
+        let excludes = vec![];
+        let languages = vec!["rust".to_string()];
+        let max_file_size = 1048576; // 1 MB
+        let filtered_files = filter_files(test_dir, &languages, &excludes, max_file_size);
+
+        assert!(filtered_files.contains(&small_file_path));
+
+        // Clean up
+        fs::remove_file(small_file_path).unwrap();
     }
 
     #[test]
@@ -71,7 +117,8 @@ mod tests {
 
         let excludes = vec!["*.txt".to_string()];
         let languages = vec!["rust".to_string()];
-        let filtered_files = filter_files(test_dir, &languages, &excludes);
+        let max_file_size = 1048576;
+        let filtered_files = filter_files(test_dir, &languages, &excludes, max_file_size);
 
         assert_eq!(filtered_files.len(), 3);
         assert!(filtered_files.contains(&test_dir.join("testA.rs")));
