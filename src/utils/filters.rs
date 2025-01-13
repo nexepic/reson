@@ -106,9 +106,6 @@ mod tests {
         let filtered_files = filter_files(test_dir, &languages, &excludes, max_file_size);
 
         assert!(filtered_files.contains(&small_file_path));
-
-        // Clean up
-        fs::remove_file(small_file_path).unwrap();
     }
 
     #[test]
