@@ -9,7 +9,7 @@ use tree_sitter_rust::language as rust_language;
 use std::fs;
 use crate::utils::language_mapping::get_language_from_extension;
 
-#[derive(Serialize, Debug)]
+#[derive(Debug)]
 pub struct CodeBlock {
     pub start_byte: usize,
     pub end_byte: usize,
@@ -44,19 +44,11 @@ pub fn parse_file(file_path: &std::path::Path) -> Result<(Vec<CodeBlock>, Tree, 
     Ok((code_blocks, tree, source_code))
 }
 
-use std::fs::File;
-use std::io::Write;
-use serde::Serialize;
-
 fn extract_code_blocks(tree: Tree, source: &str) -> Result<Vec<CodeBlock>, String> {
     let mut cursor = tree.walk();
     let mut code_blocks = Vec::new();
 
     traverse_tree(&mut cursor, source, &mut code_blocks);
-
-    let serialized = serde_json::to_string(&code_blocks).map_err(|_| "Failed to serialize code blocks")?;
-    let mut file = File::create("code_blocks.json").map_err(|_| "Failed to create file")?;
-    file.write_all(serialized.as_bytes()).map_err(|_| "Failed to write to file")?;
 
     Ok(code_blocks)
 }
