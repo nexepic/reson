@@ -10,6 +10,7 @@ use indicatif::ProgressBar;
 use indicatif::ProgressStyle;
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
+use num_cpus;
 
 #[derive(Serialize, Debug)]
 pub struct DuplicateBlock {
@@ -39,6 +40,17 @@ struct DebugData {
     content_fingerprint_mappings: Vec<(String, usize, usize, String, String, String)>, // (content, start_line, end_line, fingerprint, file_name, ast_content)
 }
 
+fn create_cpu_bound_thread_pool(num_threads: usize) -> rayon::ThreadPool {
+    ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .start_handler(|index| {
+            let _core_id = index % num_cpus::get();
+            // println!("Thread {} started on core {}", index, core_id);
+        })
+        .build()
+        .expect("Failed to create thread pool")
+}
+
 pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Vec<DuplicateReport> {
     let files = filter_files(&args.source_path, &args.languages, &args.excludes);
     let mut fingerprints: HashMap<String, Vec<DuplicateBlock>> = HashMap::new();
@@ -54,8 +66,8 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Vec<
             .progress_chars("#>-")
     );
 
-    // Create a custom thread pool with the specified number of threads
-    let pool = ThreadPoolBuilder::new().num_threads(num_threads).build().unwrap();
+    // Create a custom CPU-bound thread pool
+    let pool = create_cpu_bound_thread_pool(num_threads);
 
     for file in files {
         pb.set_message(file.to_string_lossy().to_string());
@@ -64,44 +76,48 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Vec<
             let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
             let language = get_language_from_extension(extension).unwrap_or_else(|| panic!("Unsupported file extension"));
 
-            // Use the custom thread pool for parallel processing
+            // Split blocks into chunks for parallel processing
+            let chunk_size = (blocks.len() + num_threads - 1) / num_threads;
+            let block_chunks: Vec<_> = blocks.chunks(chunk_size).collect();
+
             let processed_blocks: Vec<(String, Option<ParentFingerprint>, DuplicateBlock)> = pool.install(|| {
-                blocks.par_iter()
-                    .filter_map(|block| {
-                        let block_length = block.end_line - block.start_line + 1;
-                        if block_length < args.threshold {
-                            return None;
-                        }
-
-                        let (fingerprint, _ast_representation) = compute_ast_fingerprint(&block.content, language);
-
-                        // Check if the block already exists
-                        if let Some(existing_blocks) = fingerprints.get(&fingerprint) {
-                            if existing_blocks.iter().any(|b| b.start_line_number == block.start_line && b.end_line_number == block.end_line && b.source_file == file_path) {
-                                return None; // Skip insertion if the block already exists
+                block_chunks.par_iter()
+                    .flat_map(|chunk| {
+                        chunk.iter().filter_map(|block| {
+                            let block_length = block.end_line - block.start_line + 1;
+                            if block_length < args.threshold {
+                                return None;
                             }
-                        }
 
-                        let duplicate_block = DuplicateBlock {
-                            start_line_number: block.start_line,
-                            end_line_number: block.end_line,
-                            source_file: file_path.clone(),
-                        };
+                            let (fingerprint, _ast_representation) = compute_ast_fingerprint(&block.content, language);
 
-                        let parent_fingerprint = if let Some(parent_content) = get_parent_content(&tree, &source_code, block.start_byte, block.end_byte) {
-                            let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(&parent_content, language);
-                            Some(ParentFingerprint {
-                                fingerprint: parent_fingerprint,
-                                content: parent_content,
-                                ast_content: ast_representation,
-                            })
-                        } else {
-                            None
-                        };
+                            // Check if the block already exists
+                            if let Some(existing_blocks) = fingerprints.get(&fingerprint) {
+                                if existing_blocks.iter().any(|b| b.start_line_number == block.start_line && b.end_line_number == block.end_line && b.source_file == file_path) {
+                                    return None; // Skip insertion if the block already exists
+                                }
+                            }
 
-                        Some((fingerprint, parent_fingerprint, duplicate_block))
-                    })
-                    .collect()
+                            let duplicate_block = DuplicateBlock {
+                                start_line_number: block.start_line,
+                                end_line_number: block.end_line,
+                                source_file: file_path.clone(),
+                            };
+
+                            let parent_fingerprint = if let Some(parent_content) = get_parent_content(&tree, &source_code, block.start_byte, block.end_byte) {
+                                let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(&parent_content, language);
+                                Some(ParentFingerprint {
+                                    fingerprint: parent_fingerprint,
+                                    content: parent_content,
+                                    ast_content: ast_representation,
+                                })
+                            } else {
+                                None
+                            };
+
+                            Some((fingerprint, parent_fingerprint, duplicate_block))
+                        }).collect::<Vec<_>>()
+                    }).collect()
             });
 
             for (fingerprint, parent_fingerprint, duplicate_block) in processed_blocks {
@@ -184,10 +200,11 @@ mod tests {
             output_format: "json".to_string(),
             output_file: None,
             threshold: 100,
+            threads: 1,
             debug: false,
         };
 
-        let result = detect_duplicates(&args);
+        let result = detect_duplicates(&args, 1);
         assert!(result.is_empty());
     }
 
@@ -201,10 +218,11 @@ mod tests {
             output_format: "json".to_string(),
             output_file: None,
             threshold: 5,
+            threads: 1,
             debug: false,
         };
 
-        let result = detect_duplicates(&args);
+        let result = detect_duplicates(&args, 1);
         assert!(!result.is_empty());
     }
 
@@ -218,10 +236,11 @@ mod tests {
             output_format: "json".to_string(),
             output_file: None,
             threshold: 5,
+            threads: 1,
             debug: false,
         };
 
-        let result = detect_duplicates(&args);
+        let result = detect_duplicates(&args, 1);
         assert!(result.is_empty());
     }
 
@@ -235,10 +254,11 @@ mod tests {
             output_format: "json".to_string(),
             output_file: None,
             threshold: 1,
+            threads: 1,
             debug: true,
         };
 
-        let result = detect_duplicates(&args);
+        let result = detect_duplicates(&args, 1);
         assert!(!result.is_empty());
         assert!(Path::new("debug_data.json").exists());
         fs::remove_file("debug_data.json").unwrap();
