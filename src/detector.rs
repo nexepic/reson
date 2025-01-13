@@ -10,7 +10,6 @@ use indicatif::ProgressBar;
 use indicatif::ProgressStyle;
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
-use num_cpus;
 
 #[derive(Serialize, Debug)]
 pub struct DuplicateBlock {
@@ -43,10 +42,6 @@ struct DebugData {
 fn create_cpu_bound_thread_pool(num_threads: usize) -> rayon::ThreadPool {
     ThreadPoolBuilder::new()
         .num_threads(num_threads)
-        .start_handler(|index| {
-            let _core_id = index % num_cpus::get();
-            // println!("Thread {} started on core {}", index, core_id);
-        })
         .build()
         .expect("Failed to create thread pool")
 }
