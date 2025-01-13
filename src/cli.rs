@@ -21,6 +21,9 @@ pub struct CliArgs {
     #[clap(short = 't', long = "threshold", default_value = "5", value_parser(clap::value_parser!(usize)))]
     pub threshold: usize,
 
+    #[clap(short = 'n', long = "threads", default_value = "10", value_parser(clap::value_parser!(usize)))]
+    pub threads: usize,
+
     #[clap(long = "debug")]
     pub debug: bool,
 }
@@ -85,6 +88,15 @@ impl CliArgs {
                     .value_parser(clap::value_parser!(usize)),
             )
             .arg(
+                Arg::new("threads")
+                    .short('n')
+                    .long("threads")
+                    .value_name("THREADS")
+                    .help("Number of threads to use for parallel processing")
+                    .default_value("10")
+                    .value_parser(clap::value_parser!(usize)),
+            )
+            .arg(
                 Arg::new("debug")
                     .long("debug")
                     .help("Enable debug mode")
@@ -144,6 +156,10 @@ impl CliArgs {
         *matches.get_one::<bool>("debug").unwrap_or(&false)
     }
 
+    fn parse_threads(matches: &clap::ArgMatches) -> usize {
+        *matches.get_one::<usize>("threads").unwrap()
+    }
+
     fn parse_cli_args(matches: &clap::ArgMatches) -> CliArgs {
         CliArgs {
             source_path: CliArgs::parse_source_path(matches),
@@ -155,6 +171,7 @@ impl CliArgs {
                 .to_string(),
             output_file: CliArgs::parse_output_file(matches),
             threshold: CliArgs::parse_threshold(matches),
+            threads: CliArgs::parse_threads(matches),
             debug: CliArgs::parse_debug(matches),
         }
     }
@@ -276,6 +293,20 @@ mod tests {
 
         let threshold = CliArgs::parse_threshold(&matches);
         assert_eq!(threshold, 10);
+    }
+    
+    #[test]
+    fn test_parse_threads() {
+        let matches = CliArgs::command().try_get_matches_from(vec![
+            "code-duplication-detector",
+            "--source-path",
+            "src",
+            "--threads",
+            "10",
+        ]).unwrap();
+
+        let threads = CliArgs::parse_threads(&matches);
+        assert_eq!(threads, 10);
     }
 
     #[test]
