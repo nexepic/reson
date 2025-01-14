@@ -15,7 +15,7 @@ pub struct CliArgs {
     #[clap(short = 'o', long = "output-format", default_value = "json", value_parser(clap::builder::ValueParser::string()))]
     pub output_format: String,
 
-    #[clap(short = 'f', long = "output-file", default_value = "duplications.json", value_parser(clap::value_parser!(PathBuf)))]
+    #[clap(short = 'f', long = "output-file", default_value = "duplications", value_parser(clap::value_parser!(PathBuf)))]
     pub output_file: Option<PathBuf>,
 
     #[clap(short = 't', long = "threshold", default_value = "5", value_parser(clap::value_parser!(usize)))]
@@ -79,7 +79,7 @@ impl CliArgs {
                     .long("output-file")
                     .value_name("FILE")
                     .help("File to write the output to")
-                    .default_value("duplications.json")
+                    .default_value("duplications")
                     .value_parser(clap::value_parser!(PathBuf)),
             )
             .arg(
