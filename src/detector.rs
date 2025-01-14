@@ -39,7 +39,7 @@ struct DebugData {
     content_fingerprint_mappings: Vec<(String, usize, usize, String, String, String)>, // (content, start_line, end_line, fingerprint, file_name, ast_content)
 }
 
-pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Vec<DuplicateReport> {
+pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> HashMap<String, serde_json::Value> {
     let files = filter_files(&args.source_path, &args.languages, &args.excludes, args.max_file_size);
     let mut fingerprints: HashMap<String, Vec<DuplicateBlock>> = HashMap::new();
     let mut parent_fingerprints: HashMap<String, ParentFingerprint> = HashMap::new();
@@ -143,7 +143,11 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Vec<
         }
     }
 
-    fingerprints
+    let mut duplicate_blocks = 0;
+    let mut duplicate_lines = 0;
+    let mut duplicate_file_set = BTreeSet::new();
+
+    let details: Vec<DuplicateReport> = fingerprints
         .into_iter()
         .filter(|(fingerprint, blocks)| {
             let retain = blocks.len() > 1
@@ -160,13 +164,28 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Vec<
         })
         .map(|(fingerprint, blocks)| {
             log::debug!("Creating DuplicateReport for fingerprint: {}", fingerprint);
+            duplicate_blocks += blocks.len();
+            duplicate_lines += blocks.iter().map(|b| b.end_line_number - b.start_line_number + 1).sum::<usize>();
+            blocks.iter().for_each(|b| { duplicate_file_set.insert(b.source_file.clone()); });
             DuplicateReport {
                 fingerprint,
                 line_count: blocks[0].end_line_number - blocks[0].start_line_number + 1,
                 blocks,
             }
         })
-        .collect()
+        .collect();
+
+    let summary = serde_json::json!({
+        "duplicateBlocks": duplicate_blocks,
+        "duplicateLines": duplicate_lines,
+        "duplicateFiles": duplicate_file_set.len(),
+    });
+
+    let mut result = HashMap::new();
+    result.insert("summary".to_string(), summary);
+    result.insert("records".to_string(), serde_json::to_value(details).unwrap());
+
+    result
 }
 
 #[cfg(test)]
@@ -195,11 +214,15 @@ mod tests {
             max_file_size: 1048576,
             debug: false,
         };
-
+    
         let result = detect_duplicates(&args, 1);
-        assert!(result.is_empty());
+        assert!(result.get("records").unwrap().as_array().unwrap().is_empty());
+        let summary = result.get("summary").unwrap();
+        assert_eq!(summary["duplicateBlocks"], 0);
+        assert_eq!(summary["duplicateLines"], 0);
+        assert_eq!(summary["duplicateFiles"], 0);
     }
-
+    
     #[test]
     fn test_detect_duplicates_with_duplicates() {
         let test_dir = setup_test_environment();
@@ -214,11 +237,15 @@ mod tests {
             max_file_size: 1048576,
             debug: false,
         };
-
+    
         let result = detect_duplicates(&args, 1);
-        assert!(!result.is_empty());
+        assert!(!result.get("records").unwrap().as_array().unwrap().is_empty());
+        let summary = result.get("summary").unwrap();
+        assert!(summary["duplicateBlocks"].as_u64().unwrap() > 0);
+        assert!(summary["duplicateLines"].as_u64().unwrap() > 0);
+        assert!(summary["duplicateFiles"].as_u64().unwrap() > 0);
     }
-
+    
     #[test]
     fn test_detect_duplicates_with_excludes() {
         let test_dir = setup_test_environment();
@@ -233,11 +260,15 @@ mod tests {
             max_file_size: 1048576,
             debug: false,
         };
-
+    
         let result = detect_duplicates(&args, 1);
-        assert!(result.is_empty());
+        assert!(result.get("records").unwrap().as_array().unwrap().is_empty());
+        let summary = result.get("summary").unwrap();
+        assert_eq!(summary["duplicateBlocks"], 0);
+        assert_eq!(summary["duplicateLines"], 0);
+        assert_eq!(summary["duplicateFiles"], 0);
     }
-
+    
     #[test]
     fn test_detect_duplicates_debug_mode() {
         let test_dir = setup_test_environment();
@@ -252,9 +283,9 @@ mod tests {
             max_file_size: 1048576,
             debug: true,
         };
-
+    
         let result = detect_duplicates(&args, 1);
-        assert!(!result.is_empty());
+        assert!(!result.get("records").unwrap().as_array().unwrap().is_empty());
         assert!(Path::new("debug_data.json").exists());
         fs::remove_file("debug_data.json").unwrap();
     }

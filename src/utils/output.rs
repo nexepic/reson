@@ -38,7 +38,7 @@ mod tests {
     use tempfile;
     use std::fs;
     use crate::detector::{DuplicateBlock, DuplicateReport};
-    
+
     #[test]
     fn test_write_output_json() {
         let results = json!([{
