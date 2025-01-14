@@ -47,7 +47,6 @@ fn collect_ast_content(node: Node, source_code: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile;
 
     #[test]
     fn test_compute_ast_fingerprint() {
