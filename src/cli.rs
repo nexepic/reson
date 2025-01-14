@@ -15,7 +15,7 @@ pub struct CliArgs {
     #[clap(short = 'o', long = "output-format", default_value = "json", value_parser(clap::builder::ValueParser::string()))]
     pub output_format: String,
 
-    #[clap(short = 'f', long = "output-file", value_parser(clap::value_parser!(PathBuf)))]
+    #[clap(short = 'f', long = "output-file", default_value = "duplications.json", value_parser(clap::value_parser!(PathBuf)))]
     pub output_file: Option<PathBuf>,
 
     #[clap(short = 't', long = "threshold", default_value = "5", value_parser(clap::value_parser!(usize)))]
@@ -79,6 +79,7 @@ impl CliArgs {
                     .long("output-file")
                     .value_name("FILE")
                     .help("File to write the output to")
+                    .default_value("duplications.json")
                     .value_parser(clap::value_parser!(PathBuf)),
             )
             .arg(
@@ -154,6 +155,10 @@ impl CliArgs {
             .filter(|s| !s.is_empty())
             .collect()
     }
+    
+    fn parse_output_format(matches: &clap::ArgMatches) -> String {
+        matches.get_one::<String>("output-format").unwrap().to_string()
+    }
 
     fn parse_output_file(matches: &clap::ArgMatches) -> Option<PathBuf> {
         matches.get_one::<PathBuf>("output-file").cloned()
@@ -180,10 +185,7 @@ impl CliArgs {
             source_path: CliArgs::parse_source_path(matches),
             languages: CliArgs::parse_languages(matches),
             excludes: CliArgs::parse_excludes(matches),
-            output_format: matches
-                .get_one::<String>("output-format")
-                .unwrap()
-                .to_string(),
+            output_format: CliArgs::parse_output_format(matches),
             output_file: CliArgs::parse_output_file(matches),
             threshold: CliArgs::parse_threshold(matches),
             threads: CliArgs::parse_threads(matches),
@@ -281,6 +283,20 @@ mod tests {
             .collect();
 
         assert_eq!(excludes, vec!["tests", "temp", "build"]);
+    }
+    
+    #[test]
+    fn test_parse_output_format() {
+        let matches = CliArgs::command().try_get_matches_from(vec![
+            "code-duplication-detector",
+            "--source-path",
+            "src",
+            "--output-format",
+            "json",
+        ]).unwrap();
+
+        let output_format = CliArgs::parse_output_format(&matches);
+        assert_eq!(output_format, "json");
     }
 
     #[test]
