@@ -1,4 +1,5 @@
-use tree_sitter::{Parser, Tree};
+use std::collections::BTreeMap;
+use tree_sitter::{Node, Parser, Tree};
 use tree_sitter_c::language as c_language;
 use tree_sitter_cpp::language as cpp_language;
 use tree_sitter_java::language as java_language;
@@ -7,18 +8,13 @@ use tree_sitter_javascript::language as javascript_language;
 use tree_sitter_go::language as go_language;
 use tree_sitter_rust::language as rust_language;
 use std::fs;
+use crate::models::code_types::{CodeBlock, LineStats, LineType};
 use crate::utils::language_mapping::get_language_from_extension;
 
-#[derive(Debug)]
-pub struct CodeBlock {
-    pub start_byte: usize,
-    pub end_byte: usize,
-    pub start_line: usize,
-    pub end_line: usize,
-    pub content: String,
-}
-
-pub fn parse_file(file_path: &std::path::Path) -> Result<(Vec<CodeBlock>, Tree, String), String> {
+pub fn parse_file(
+    file_path: &std::path::Path,
+    cumulative_stats: &mut Option<LineStats>,
+) -> Result<(LineStats, Vec<CodeBlock>, Tree, String), String> {
     let source_code = fs::read_to_string(file_path).map_err(|_| "Failed to read file")?;
     let mut parser = Parser::new();
 
@@ -39,50 +35,144 @@ pub fn parse_file(file_path: &std::path::Path) -> Result<(Vec<CodeBlock>, Tree, 
     parser.set_language(language).map_err(|_| "Failed to set language")?;
     let tree = parser.parse(&source_code, None).ok_or("Failed to parse code")?;
 
-    let code_blocks = extract_code_blocks(tree.clone(), &source_code)?;
+    // Perform line counting and code block extraction in a single traversal
+    let (line_stats, code_blocks) = extract_lines_and_code_blocks(tree.clone(), &source_code);
 
-    Ok((code_blocks, tree, source_code))
+    if let Some(cumulative) = cumulative_stats.as_mut() {
+        cumulative.total_lines += line_stats.total_lines;
+        cumulative.code_lines += line_stats.code_lines;
+        cumulative.comment_lines += line_stats.comment_lines;
+    } else {
+        *cumulative_stats = Some(line_stats.clone());
+    }
+
+    Ok((line_stats, code_blocks, tree, source_code))
 }
 
-fn extract_code_blocks(tree: Tree, source: &str) -> Result<Vec<CodeBlock>, String> {
-    let mut cursor = tree.walk();
+fn extract_lines_and_code_blocks(tree: Tree, source_code: &str) -> (LineStats, Vec<CodeBlock>) {
+    let total_lines = source_code.lines().count();
+    let mut line_data: BTreeMap<usize, (LineType, bool, bool)> = BTreeMap::new(); // (is_code, is_comment, is_empty)
     let mut code_blocks = Vec::new();
 
-    traverse_tree(&mut cursor, source, &mut code_blocks);
+    // Initialize line_data using the root node
+    initialize_line_data(tree.root_node(), source_code, &mut line_data);
 
-    Ok(code_blocks)
+    // Traverse the AST for detailed parsing
+    traverse_tree(
+        tree.root_node(),
+        source_code,
+        &mut line_data,
+        &mut code_blocks,
+    );
+
+    let line_stats = compute_line_stats(&line_data, total_lines);
+
+    (line_stats, code_blocks)
 }
 
-fn traverse_tree(cursor: &mut tree_sitter::TreeCursor, source: &str, code_blocks: &mut Vec<CodeBlock>) {
-    loop {
-        let node = cursor.node();
-        if node.is_named() {
-            let content = source[node.start_byte()..node.end_byte()].to_string();
-            // log::debug!(
-            //     "Node: kind={}, start_byte={}, end_byte={}, content={}",
-            //     node.kind(),
-            //     node.start_byte(),
-            //     node.end_byte(),
-            //     content
-            // );
+fn compute_line_stats(line_data: &BTreeMap<usize, (LineType, bool, bool)>, total_lines: usize) -> LineStats {
+    let mut code_lines = 0;
+    let mut comment_lines = 0;
+    let mut blank_lines = 0;
 
-            code_blocks.push(CodeBlock {
-                start_byte: node.start_byte(),
-                end_byte: node.end_byte(),
-                start_line: node.start_position().row + 1,
-                end_line: node.end_position().row + 1,
-                content: content.clone(),
-            });
+    for (_, (is_code, is_comment, is_blank)) in line_data {
+        if *is_blank {
+            blank_lines += 1;
+        } else if *is_comment && *is_code != LineType::Code {
+            comment_lines += 1;
+        } else if *is_code != LineType::NotCode {
+            code_lines += 1;
+        }
+    }
+    
+    LineStats {
+        total_lines,
+        code_lines,
+        comment_lines,
+        blank_lines,
+    }
+}
 
-            if cursor.goto_first_child() {
-                traverse_tree(cursor, source, code_blocks);
-                cursor.goto_parent();
+fn initialize_line_data(
+    root_node: Node,
+    source_code: &str,
+    line_data: &mut BTreeMap<usize, (LineType, bool, bool)>,
+) {
+    let total_lines = source_code.lines().count();
+
+    for line in 0..total_lines {
+        let line_content = source_code.lines().nth(line).unwrap_or("").to_string();
+        let is_empty = line_content.trim().is_empty();
+        if is_empty {
+            line_data.insert(line, (LineType::NotCode, false, true));
+        } else {
+            line_data.insert(line, (LineType::Unknown, false, false));
+        }
+    }
+
+    // Traverse the first level of children nodes to analyze comments and update line_data
+    // In order to identify comment blocks
+    for child in root_node.children(&mut root_node.walk()) {
+        if child.is_named() {
+            let start_line = child.start_position().row;
+            let end_line = child.end_position().row;
+
+            for line in start_line..=end_line {
+                if let Some(entry) = line_data.get_mut(&line) {
+                    if child.kind().contains("comment") {
+                        entry.1 = true; // Mark as comment
+                        entry.0 = LineType::NotCode; // Mark as not code
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn traverse_tree(
+    node: Node,
+    source_code: &str,
+    line_data: &mut BTreeMap<usize, (LineType, bool, bool)>,
+    code_blocks: &mut Vec<CodeBlock>,
+) {
+    if node.is_named() {
+        let start_line = node.start_position().row;
+        let end_line = node.end_position().row;
+        let node_content = &source_code[node.start_byte()..node.end_byte()];
+
+        if start_line == end_line {
+            let line_content = source_code.lines().nth(start_line).unwrap_or("");
+            let mut is_code = LineType::Unknown;
+            let mut is_comment = false;
+        
+            if node.kind().contains("comment") {
+                is_comment = true;
+            } else {
+                let trimmed_line = line_content.trim();
+                if !trimmed_line.is_empty() {
+                    is_code = LineType::Code;
+                }
+            }
+        
+            if let Some(entry) = line_data.get_mut(&start_line) {
+                if entry.0 == LineType::Unknown {
+                    entry.0 = is_code;
+                }
+                entry.1 = is_comment;
             }
         }
 
-        if !cursor.goto_next_sibling() {
-            break;
-        }
+        code_blocks.push(CodeBlock {
+            start_byte: node.start_byte(),
+            end_byte: node.end_byte(),
+            start_line: start_line + 1,
+            end_line: end_line + 1,
+            content: node_content.to_string(),
+        });
+    }
+
+    for child in node.children(&mut node.walk()) {
+        traverse_tree(child, source_code, line_data, code_blocks);
     }
 }
 
@@ -137,14 +227,14 @@ mod tests {
 
     #[test]
     fn test_parse_c_file() {
-        let content = "int main() { return 0; }";
-        let file_path = create_temp_file(content, "c");
-
-        let result = parse_file(&file_path);
-
+        let file_path = std::path::Path::new("tests/c/testA.c");
+        let content = fs::read_to_string(file_path).expect("Failed to read file");
+    
+        let result = parse_file(&file_path, &mut None);
+    
         assert!(result.is_ok(), "Parsing C file failed");
-        let (code_blocks, _tree, source_code) = result.unwrap();
-
+        let (_line_stats, code_blocks, _tree, source_code) = result.unwrap();
+    
         assert_eq!(source_code, content);
         assert!(code_blocks.len() > 0);
         assert_eq!(code_blocks[0].content, content);
@@ -155,10 +245,10 @@ mod tests {
         let content = "#include <iostream>\nint main() { std::cout << \"Hello, World!\" << std::endl; return 0; }";
         let file_path = create_temp_file(content, "cpp");
 
-        let result = parse_file(&file_path);
+        let result = parse_file(&file_path, &mut None);
 
         assert!(result.is_ok(), "Parsing C++ file failed");
-        let (code_blocks, _tree, source_code) = result.unwrap();
+        let (_line_stats, code_blocks, _tree, source_code) = result.unwrap();
 
         assert_eq!(source_code, content);
         assert!(code_blocks.len() > 0);
@@ -169,10 +259,10 @@ mod tests {
         let content = "public class Test { public static void main(String[] args) { System.out.println(\"Hello, World!\"); } }";
         let file_path = create_temp_file(content, "java");
 
-        let result = parse_file(&file_path);
+        let result = parse_file(&file_path, &mut None);
 
         assert!(result.is_ok(), "Parsing Java file failed");
-        let (code_blocks, _tree, source_code) = result.unwrap();
+        let (_line_stats, code_blocks, _tree, source_code) = result.unwrap();
 
         assert_eq!(source_code, content);
         assert!(code_blocks.len() > 0);
@@ -183,10 +273,10 @@ mod tests {
         let content = "def main():\n    print(\"Hello, World!\")";
         let file_path = create_temp_file(content, "py");
 
-        let result = parse_file(&file_path);
+        let result = parse_file(&file_path, &mut None);
 
         assert!(result.is_ok(), "Parsing Python file failed");
-        let (code_blocks, _tree, source_code) = result.unwrap();
+        let (_line_stats, code_blocks, _tree, source_code) = result.unwrap();
 
         assert_eq!(source_code, content);
         assert!(code_blocks.len() > 0);
@@ -197,10 +287,82 @@ mod tests {
         let content = "unsupported content";
         let file_path = create_temp_file(content, "txt");
 
-        let result = parse_file(&file_path);
+        let result = parse_file(&file_path, &mut None);
 
         assert!(result.is_err(), "Parsing unsupported file should fail");
         assert_eq!(result.err().unwrap(), "Unsupported file extension");
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use tree_sitter::Parser;
+        
+        #[test]
+        fn test_extract_lines_and_code_blocks() {
+            // Read the source code from the file
+            let file_path = std::path::Path::new("tests/rust/testA.rs");
+            let source_code = fs::read_to_string(file_path).expect("Failed to read test file");
+        
+            // Initialize the parser with the Rust grammar
+            let mut parser = Parser::new();
+            let language = rust_language();
+            parser.set_language(language).expect("Error loading Rust grammar");
+        
+            // Parse the source code
+            let tree = parser.parse(&source_code, None).expect("Failed to parse source code");
+        
+            // Analyze the AST and source
+            let (line_stats, code_blocks) = extract_lines_and_code_blocks(tree.clone(), &source_code);
+        
+            // Assertions for line statistics
+            assert_eq!(line_stats.total_lines, 38, "Total lines should match.");
+            assert_eq!(line_stats.code_lines, 26, "Code lines should match.");
+            assert_eq!(line_stats.comment_lines, 10, "Comment lines should match.");
+        
+            // Assertions for code blocks
+            assert!(!code_blocks.is_empty(), "Code blocks should not be empty.");
+            assert_eq!(code_blocks.len(), 104, "Should detect two functions.");
+            assert_eq!(
+                code_blocks[2].content.trim().replace(" ", ""),
+                r#"fn print_hello_test_a1() {
+                println!("Hello, World!");
+                for i in 0..5 {
+                    println!("This is line {}", i);
+                    if i % 2 == 0 {
+                        println!("Even number");
+                    } else {
+                        // This is an odd number
+                        println!("Odd number");
+                    }
+                }
+            }"#.replace(" ", ""),
+                "First function content should match."
+            );
+            assert_eq!(
+                code_blocks[3].content.trim(),
+                r#"print_hello_test_a1"#,
+                "Second function content should match."
+            );
+
+            let file_path = std::path::Path::new("tests/java/testA.java");
+            let source_code = fs::read_to_string(file_path).expect("Failed to read test file");
+
+            let mut parser = Parser::new();
+            let language = rust_language();
+            parser.set_language(language).expect("Error loading Java grammar");
+
+            // Parse the source code
+            let tree = parser.parse(&source_code, None).expect("Failed to parse source code");
+
+            // Analyze the AST and source
+            let (line_stats, _code_blocks) = extract_lines_and_code_blocks(tree.clone(), &source_code);
+
+            // Assertions for line statistics
+            assert_eq!(line_stats.total_lines, 36, "Total lines should match.");
+            assert_eq!(line_stats.code_lines, 29, "Code lines should match.");
+            assert_eq!(line_stats.comment_lines, 5, "Comment lines should match.");
+        }
     }
 
     #[test]
@@ -208,8 +370,8 @@ mod tests {
         let content = "int main() { int a = 10; return a; }";
         let file_path = create_temp_file(content, "c");
 
-        let result = parse_file(&file_path).expect("Failed to parse file");
-        let (_code_blocks, tree, source_code) = result;
+        let result = parse_file(&file_path, &mut None).expect("Failed to parse file");
+        let (_line_stats, _code_blocks, tree, source_code) = result;
 
         // Assuming we want to extract parent node content for the first block
         let target_block = &_code_blocks[2];
@@ -224,8 +386,8 @@ mod tests {
         let content = "int main() { int a = 10; return a; }";
         let file_path = create_temp_file(content, "c");
 
-        let result = parse_file(&file_path).expect("Failed to parse file");
-        let (_code_blocks, tree, source_code) = result;
+        let result = parse_file(&file_path, &mut None).expect("Failed to parse file");
+        let (_line_stats, _code_blocks, tree, source_code) = result;
 
         // Assuming we want to extract parent node content for a non-existent block
         let parent_content = get_parent_content(&tree, &source_code, 0, source_code.len() + 1);
