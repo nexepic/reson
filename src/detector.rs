@@ -1,6 +1,5 @@
 use crate::parser::ast_parser::{parse_file, get_parent_content};
-use serde::Serialize;
-use std::collections::{HashMap, BTreeSet};
+use std::collections::{HashMap, BTreeSet, HashSet};
 use std::fs::File;
 use std::io::Write;
 use crate::utils::ast_collection::compute_ast_fingerprint;
@@ -10,34 +9,8 @@ use indicatif::ProgressBar;
 use indicatif::ProgressStyle;
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
-
-#[derive(Serialize, Debug)]
-pub struct DuplicateBlock {
-    pub start_line_number: usize,
-    pub end_line_number: usize,
-    pub source_file: String,
-}
-
-#[derive(Serialize)]
-pub struct DuplicateReport {
-    pub fingerprint: String,
-    pub line_count: usize,
-    pub blocks: Vec<DuplicateBlock>,
-}
-
-#[derive(Serialize, Clone)]
-struct ParentFingerprint {
-    fingerprint: String,
-    content: String,
-    ast_content: String,
-}
-
-#[derive(Serialize)]
-struct DebugData {
-    parent_fingerprints: HashMap<String, ParentFingerprint>,
-    exceeding_threshold_fingerprints: BTreeSet<String>,
-    content_fingerprint_mappings: Vec<(String, usize, usize, String, String, String)>, // (content, start_line, end_line, fingerprint, file_name, ast_content)
-}
+use crate::models::code_types::LineStats;
+use crate::models::detection_types::{DebugData, DuplicateBlock, DuplicateReport, ParentFingerprint};
 
 pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> HashMap<String, serde_json::Value> {
     let files = filter_files(&args.source_path, &args.languages, &args.excludes, args.max_file_size);
@@ -64,8 +37,15 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
     for file in files {
         pb.set_message(file.to_string_lossy().to_string());
 
+        let cumulative_stats = LineStats {
+            total_lines: 0,
+            code_lines: 0,
+            comment_lines: 0,
+            blank_lines: 0,
+        };
+
         // Parse file and store blocks on the heap using Box
-        if let Ok((blocks, tree, source_code)) = parse_file(&file) {
+        if let Ok((line_stats, blocks, tree, source_code)) = parse_file(&file, &mut Some(cumulative_stats)) {
             let file_path = file.to_string_lossy().to_string();
             let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
             let language = get_language_from_extension(extension).unwrap_or_else(|| panic!("Unsupported file extension"));
@@ -112,12 +92,17 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
             });
 
             for (fingerprint, parent_fingerprint, duplicate_block) in processed_blocks {
-                fingerprints.entry(fingerprint.clone()).or_default().push(duplicate_block);
+                fingerprints
+                    .entry(fingerprint.clone())
+                    .or_insert_with(Vec::new)
+                    .push(duplicate_block);
 
                 if let Some(parent) = parent_fingerprint {
                     parent_fingerprints.insert(fingerprint.clone(), parent);
                 }
             }
+
+            remove_duplicate_blocks(&mut fingerprints);
         }
         pb.inc(1);
     }
@@ -188,6 +173,13 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
     result
 }
 
+pub fn remove_duplicate_blocks(fingerprints: &mut HashMap<String, Vec<DuplicateBlock>>) {
+    for blocks in fingerprints.values_mut() {
+        let unique_blocks: HashSet<_> = blocks.drain(..).collect();
+        *blocks = unique_blocks.into_iter().collect();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -244,6 +236,48 @@ mod tests {
         assert!(summary["duplicateBlocks"].as_u64().unwrap() > 0);
         assert!(summary["duplicateLines"].as_u64().unwrap() > 0);
         assert!(summary["duplicateFiles"].as_u64().unwrap() > 0);
+    }
+
+    #[test]
+    fn test_remove_duplicate_blocks() {
+        let mut fingerprints: HashMap<String, Vec<DuplicateBlock>> = HashMap::new();
+
+        fingerprints.insert(
+            "fingerprint1".to_string(),
+            vec![
+                DuplicateBlock {
+                    start_line_number: 1,
+                    end_line_number: 5,
+                    source_file: "file1.rs".to_string(),
+                },
+                DuplicateBlock {
+                    start_line_number: 1,
+                    end_line_number: 5,
+                    source_file: "file1.rs".to_string(),
+                },
+            ],
+        );
+
+        fingerprints.insert(
+            "fingerprint2".to_string(),
+            vec![
+                DuplicateBlock {
+                    start_line_number: 10,
+                    end_line_number: 15,
+                    source_file: "file2.rs".to_string(),
+                },
+                DuplicateBlock {
+                    start_line_number: 20,
+                    end_line_number: 25,
+                    source_file: "file2.rs".to_string(),
+                },
+            ],
+        );
+
+        remove_duplicate_blocks(&mut fingerprints);
+
+        assert_eq!(fingerprints["fingerprint1"].len(), 1);
+        assert_eq!(fingerprints["fingerprint2"].len(), 2);
     }
     
     #[test]
