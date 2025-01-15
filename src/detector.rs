@@ -9,7 +9,6 @@ use indicatif::ProgressBar;
 use indicatif::ProgressStyle;
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
-use crate::models::code_types::LineStats;
 use crate::models::detection_types::{DebugData, DuplicateBlock, DuplicateReport, ParentFingerprint};
 
 pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> HashMap<String, serde_json::Value> {
@@ -37,15 +36,8 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
     for file in files {
         pb.set_message(file.to_string_lossy().to_string());
 
-        let cumulative_stats = LineStats {
-            total_lines: 0,
-            code_lines: 0,
-            comment_lines: 0,
-            blank_lines: 0,
-        };
-
         // Parse file and store blocks on the heap using Box
-        if let Ok((line_stats, blocks, tree, source_code)) = parse_file(&file, &mut Some(cumulative_stats)) {
+        if let Ok((blocks, tree, source_code)) = parse_file(&file) {
             let file_path = file.to_string_lossy().to_string();
             let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
             let language = get_language_from_extension(extension).unwrap_or_else(|| panic!("Unsupported file extension"));
@@ -206,7 +198,7 @@ mod tests {
             max_file_size: 1048576,
             debug: false,
         };
-    
+
         let result = detect_duplicates(&args, 1);
         assert!(result.get("records").unwrap().as_array().unwrap().is_empty());
         let summary = result.get("summary").unwrap();
@@ -214,7 +206,7 @@ mod tests {
         assert_eq!(summary["duplicateLines"], 0);
         assert_eq!(summary["duplicateFiles"], 0);
     }
-    
+
     #[test]
     fn test_detect_duplicates_with_duplicates() {
         let test_dir = setup_test_environment();
@@ -229,7 +221,7 @@ mod tests {
             max_file_size: 1048576,
             debug: false,
         };
-    
+
         let result = detect_duplicates(&args, 1);
         assert!(!result.get("records").unwrap().as_array().unwrap().is_empty());
         let summary = result.get("summary").unwrap();
@@ -279,7 +271,7 @@ mod tests {
         assert_eq!(fingerprints["fingerprint1"].len(), 1);
         assert_eq!(fingerprints["fingerprint2"].len(), 2);
     }
-    
+
     #[test]
     fn test_detect_duplicates_with_excludes() {
         let test_dir = setup_test_environment();
@@ -294,7 +286,7 @@ mod tests {
             max_file_size: 1048576,
             debug: false,
         };
-    
+
         let result = detect_duplicates(&args, 1);
         assert!(result.get("records").unwrap().as_array().unwrap().is_empty());
         let summary = result.get("summary").unwrap();
@@ -302,7 +294,7 @@ mod tests {
         assert_eq!(summary["duplicateLines"], 0);
         assert_eq!(summary["duplicateFiles"], 0);
     }
-    
+
     #[test]
     fn test_detect_duplicates_debug_mode() {
         let test_dir = setup_test_environment();
@@ -317,7 +309,7 @@ mod tests {
             max_file_size: 1048576,
             debug: true,
         };
-    
+
         let result = detect_duplicates(&args, 1);
         assert!(!result.get("records").unwrap().as_array().unwrap().is_empty());
         assert!(Path::new("debug_data.json").exists());
