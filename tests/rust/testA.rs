@@ -35,4 +35,4 @@ fn print_hello_test_a2() {
 fn main() {
     print_hello_test_a1();
     print_hello_test_a2();
-} 
+}
