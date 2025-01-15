@@ -3,11 +3,7 @@ use std::io::Write;
 use std::path::Path;
 use serde::Serialize;
 use quick_xml::se::to_string;
-
-#[derive(Serialize)]
-struct DuplicateReport<T> {
-    items: T,
-}
+use crate::models::detection_types::DuplicateReportXML;
 
 /// Write output in JSON or other formats
 pub fn write_output<T: Serialize>(results: &T, output_format: &str, output_file: Option<&Path>) -> Result<(), std::io::Error> {
@@ -15,7 +11,7 @@ pub fn write_output<T: Serialize>(results: &T, output_format: &str, output_file:
         "json" => serde_json::to_string_pretty(results)?,
         "xml" => {
             // Wrap results in a root element with a name
-            let wrapped = DuplicateReport { items: results };
+            let wrapped = DuplicateReportXML { items: results };
             to_string(&wrapped).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?
         }
         _ => return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Unsupported format")),
@@ -37,7 +33,7 @@ mod tests {
     use serde_json::json;
     use tempfile;
     use std::fs;
-    use crate::detector::{DuplicateBlock, DuplicateReport};
+    use crate::models::detection_types::{DuplicateBlock, DuplicateReport};
 
     #[test]
     fn test_write_output_json() {

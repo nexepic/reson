@@ -2,6 +2,7 @@ mod cli;
 mod detector;
 mod parser;
 mod utils;
+mod models;
 
 use crate::cli::CliArgs;
 use crate::detector::detect_duplicates;
