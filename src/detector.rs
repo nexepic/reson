@@ -13,7 +13,7 @@ use crate::models::detection_types::{DebugData, DuplicateBlock, DuplicateReport,
 
 pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> HashMap<String, serde_json::Value> {
     let files = filter_files(&args.source_path, &args.languages, &args.excludes, args.max_file_size);
-    let mut fingerprints: HashMap<String, Vec<DuplicateBlock>> = HashMap::new();
+    let mut fingerprints: HashMap<String, BTreeSet<DuplicateBlock>> = HashMap::new();
     let mut parent_fingerprints: HashMap<String, ParentFingerprint> = HashMap::new();
     let mut exceeding_threshold_fingerprints: BTreeSet<String> = BTreeSet::new();
     let content_fingerprint_mappings: Vec<(String, usize, usize, String, String, String)> = Vec::new();
@@ -84,7 +84,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
             });
 
             for (fingerprint, parent_fingerprint, duplicate_block) in processed_blocks {
-                fingerprints.entry(fingerprint.clone()).or_default().push(duplicate_block);
+                fingerprints.entry(fingerprint.clone()).or_default().insert(duplicate_block);
 
                 if let Some(parent) = parent_fingerprint {
                     parent_fingerprints.insert(fingerprint.clone(), parent);
@@ -97,7 +97,8 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
     pb.finish_with_message(format!("Processing complete in {:.2} seconds", pb.elapsed().as_secs_f64()));
 
     for (fingerprint, blocks) in &fingerprints {
-        if blocks.len() > 1 && (blocks[0].end_line_number - blocks[0].start_line_number + 1) >= args.threshold {
+        let blocks_vec: Vec<_> = blocks.iter().collect();
+        if blocks_vec.len() > 1 && (blocks_vec[0].end_line_number - blocks_vec[0].start_line_number + 1) >= args.threshold {
             exceeding_threshold_fingerprints.insert(fingerprint.clone());
         }
     }
@@ -122,27 +123,29 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
     let details: Vec<DuplicateReport> = fingerprints
         .into_iter()
         .filter(|(fingerprint, blocks)| {
-            let retain = blocks.len() > 1
-                && (blocks[0].end_line_number - blocks[0].start_line_number + 1) >= args.threshold
+            let blocks_vec: Vec<_> = blocks.iter().collect();
+            let retain = blocks_vec.len() > 1
+                && (blocks_vec[0].end_line_number - blocks_vec[0].start_line_number + 1) >= args.threshold
                 && parent_fingerprints.get(fingerprint)
                 .map_or(true, |pf| !exceeding_threshold_fingerprints.contains(&pf.fingerprint));
             log::debug!(
                 "Filtering fingerprint: {}, retain: {}, blocks: {:?}",
                 fingerprint,
                 retain,
-                blocks
+                blocks_vec
             );
             retain
         })
         .map(|(fingerprint, blocks)| {
+            let blocks_vec: Vec<_> = blocks.iter().collect();
             log::debug!("Creating DuplicateReport for fingerprint: {}", fingerprint);
-            duplicate_blocks += blocks.len();
-            duplicate_lines += blocks.iter().map(|b| b.end_line_number - b.start_line_number + 1).sum::<usize>();
-            blocks.iter().for_each(|b| { duplicate_file_set.insert(b.source_file.clone()); });
+            duplicate_blocks += blocks_vec.len();
+            duplicate_lines += blocks_vec.iter().map(|b| b.end_line_number - b.start_line_number + 1).sum::<usize>();
+            blocks_vec.iter().for_each(|b| { duplicate_file_set.insert(b.source_file.clone()); });
             DuplicateReport {
                 fingerprint,
-                line_count: blocks[0].end_line_number - blocks[0].start_line_number + 1,
-                blocks,
+                line_count: blocks_vec[0].end_line_number - blocks_vec[0].start_line_number + 1,
+                blocks: blocks_vec.into_iter().cloned().collect(),
             }
         })
         .collect();
