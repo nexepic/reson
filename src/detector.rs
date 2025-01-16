@@ -1,5 +1,5 @@
 use crate::parser::ast_parser::{parse_file, get_parent_content};
-use std::collections::{HashMap, BTreeSet, HashSet};
+use std::collections::{HashMap, BTreeSet};
 use std::fs::File;
 use std::io::Write;
 use crate::utils::ast_collection::compute_ast_fingerprint;
@@ -84,17 +84,12 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
             });
 
             for (fingerprint, parent_fingerprint, duplicate_block) in processed_blocks {
-                fingerprints
-                    .entry(fingerprint.clone())
-                    .or_insert_with(Vec::new)
-                    .push(duplicate_block);
+                fingerprints.entry(fingerprint.clone()).or_default().push(duplicate_block);
 
                 if let Some(parent) = parent_fingerprint {
                     parent_fingerprints.insert(fingerprint.clone(), parent);
                 }
             }
-
-            remove_duplicate_blocks(&mut fingerprints);
         }
         pb.inc(1);
     }
@@ -165,13 +160,6 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
     result
 }
 
-pub fn remove_duplicate_blocks(fingerprints: &mut HashMap<String, Vec<DuplicateBlock>>) {
-    for blocks in fingerprints.values_mut() {
-        let unique_blocks: HashSet<_> = blocks.drain(..).collect();
-        *blocks = unique_blocks.into_iter().collect();
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -230,47 +218,47 @@ mod tests {
         assert!(summary["duplicateFiles"].as_u64().unwrap() > 0);
     }
 
-    #[test]
-    fn test_remove_duplicate_blocks() {
-        let mut fingerprints: HashMap<String, Vec<DuplicateBlock>> = HashMap::new();
-
-        fingerprints.insert(
-            "fingerprint1".to_string(),
-            vec![
-                DuplicateBlock {
-                    start_line_number: 1,
-                    end_line_number: 5,
-                    source_file: "file1.rs".to_string(),
-                },
-                DuplicateBlock {
-                    start_line_number: 1,
-                    end_line_number: 5,
-                    source_file: "file1.rs".to_string(),
-                },
-            ],
-        );
-
-        fingerprints.insert(
-            "fingerprint2".to_string(),
-            vec![
-                DuplicateBlock {
-                    start_line_number: 10,
-                    end_line_number: 15,
-                    source_file: "file2.rs".to_string(),
-                },
-                DuplicateBlock {
-                    start_line_number: 20,
-                    end_line_number: 25,
-                    source_file: "file2.rs".to_string(),
-                },
-            ],
-        );
-
-        remove_duplicate_blocks(&mut fingerprints);
-
-        assert_eq!(fingerprints["fingerprint1"].len(), 1);
-        assert_eq!(fingerprints["fingerprint2"].len(), 2);
-    }
+    // #[test]
+    // fn test_remove_duplicate_blocks() {
+    //     let mut fingerprints: HashMap<String, Vec<DuplicateBlock>> = HashMap::new();
+    // 
+    //     fingerprints.insert(
+    //         "fingerprint1".to_string(),
+    //         vec![
+    //             DuplicateBlock {
+    //                 start_line_number: 1,
+    //                 end_line_number: 5,
+    //                 source_file: "file1.rs".to_string(),
+    //             },
+    //             DuplicateBlock {
+    //                 start_line_number: 1,
+    //                 end_line_number: 5,
+    //                 source_file: "file1.rs".to_string(),
+    //             },
+    //         ],
+    //     );
+    // 
+    //     fingerprints.insert(
+    //         "fingerprint2".to_string(),
+    //         vec![
+    //             DuplicateBlock {
+    //                 start_line_number: 10,
+    //                 end_line_number: 15,
+    //                 source_file: "file2.rs".to_string(),
+    //             },
+    //             DuplicateBlock {
+    //                 start_line_number: 20,
+    //                 end_line_number: 25,
+    //                 source_file: "file2.rs".to_string(),
+    //             },
+    //         ],
+    //     );
+    // 
+    //     remove_duplicate_blocks(&mut fingerprints);
+    // 
+    //     assert_eq!(fingerprints["fingerprint1"].len(), 1);
+    //     assert_eq!(fingerprints["fingerprint2"].len(), 2);
+    // }
 
     #[test]
     fn test_detect_duplicates_with_excludes() {
