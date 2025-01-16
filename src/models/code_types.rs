@@ -7,6 +7,7 @@ pub struct CodeBlock {
     pub start_line: usize,
     pub end_line: usize,
     pub content: String,
+    pub parent_content: Option<String>,
 }
 
 impl Ord for CodeBlock {
@@ -48,6 +49,7 @@ mod tests {
             start_line: 1,
             end_line: 1,
             content: "int main() { return 0; }".to_string(),
+            parent_content: None,
         };
 
         let block2 = CodeBlock {
@@ -56,6 +58,7 @@ mod tests {
             start_line: 2,
             end_line: 2,
             content: "int a = 10;".to_string(),
+            parent_content: None,
         };
 
         let block3 = CodeBlock {
@@ -64,6 +67,7 @@ mod tests {
             start_line: 3,
             end_line: 3,
             content: "return a;".to_string(),
+            parent_content: None,
         };
 
         let mut blocks = BTreeSet::new();
@@ -85,6 +89,7 @@ mod tests {
             start_line: 1,
             end_line: 1,
             content: "int main() { return 0; }".to_string(),
+            parent_content: None,
         };
 
         let block2 = CodeBlock {
@@ -93,6 +98,7 @@ mod tests {
             start_line: 1,
             end_line: 1,
             content: "int main() { return 0; }".to_string(),
+            parent_content: None,
         };
 
         assert_eq!(block1, block2);
@@ -106,6 +112,7 @@ mod tests {
             start_line: 1,
             end_line: 1,
             content: "int main() { return 0; }".to_string(),
+            parent_content: None,
         };
 
         let block2 = CodeBlock {
@@ -114,6 +121,7 @@ mod tests {
             start_line: 1,
             end_line: 1,
             content: "int main() { return 1; }".to_string(),
+            parent_content: None,
         };
 
         assert_ne!(block1, block2);
@@ -127,6 +135,7 @@ mod tests {
             start_line: 1,
             end_line: 1,
             content: "int main() { return 0; }".to_string(),
+            parent_content: None,
         };
 
         let block2 = CodeBlock {
@@ -135,6 +144,7 @@ mod tests {
             start_line: 2,
             end_line: 2,
             content: "int a = 10;".to_string(),
+            parent_content: None,
         };
 
         assert!(block1 < block2);
