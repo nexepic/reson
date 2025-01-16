@@ -217,49 +217,7 @@ mod tests {
         assert!(summary["duplicateLines"].as_u64().unwrap() > 0);
         assert!(summary["duplicateFiles"].as_u64().unwrap() > 0);
     }
-
-    // #[test]
-    // fn test_remove_duplicate_blocks() {
-    //     let mut fingerprints: HashMap<String, Vec<DuplicateBlock>> = HashMap::new();
-    // 
-    //     fingerprints.insert(
-    //         "fingerprint1".to_string(),
-    //         vec![
-    //             DuplicateBlock {
-    //                 start_line_number: 1,
-    //                 end_line_number: 5,
-    //                 source_file: "file1.rs".to_string(),
-    //             },
-    //             DuplicateBlock {
-    //                 start_line_number: 1,
-    //                 end_line_number: 5,
-    //                 source_file: "file1.rs".to_string(),
-    //             },
-    //         ],
-    //     );
-    // 
-    //     fingerprints.insert(
-    //         "fingerprint2".to_string(),
-    //         vec![
-    //             DuplicateBlock {
-    //                 start_line_number: 10,
-    //                 end_line_number: 15,
-    //                 source_file: "file2.rs".to_string(),
-    //             },
-    //             DuplicateBlock {
-    //                 start_line_number: 20,
-    //                 end_line_number: 25,
-    //                 source_file: "file2.rs".to_string(),
-    //             },
-    //         ],
-    //     );
-    // 
-    //     remove_duplicate_blocks(&mut fingerprints);
-    // 
-    //     assert_eq!(fingerprints["fingerprint1"].len(), 1);
-    //     assert_eq!(fingerprints["fingerprint2"].len(), 2);
-    // }
-
+    
     #[test]
     fn test_detect_duplicates_with_excludes() {
         let test_dir = setup_test_environment();
