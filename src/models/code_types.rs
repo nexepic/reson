@@ -34,3 +34,109 @@ impl PartialEq for CodeBlock {
         self.content == other.content
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeSet;
+
+    #[test]
+    fn test_codeblock_ordering() {
+        let block1 = CodeBlock {
+            start_byte: 0,
+            end_byte: 10,
+            start_line: 1,
+            end_line: 1,
+            content: "int main() { return 0; }".to_string(),
+        };
+
+        let block2 = CodeBlock {
+            start_byte: 11,
+            end_byte: 20,
+            start_line: 2,
+            end_line: 2,
+            content: "int a = 10;".to_string(),
+        };
+
+        let block3 = CodeBlock {
+            start_byte: 21,
+            end_byte: 30,
+            start_line: 3,
+            end_line: 3,
+            content: "return a;".to_string(),
+        };
+
+        let mut blocks = BTreeSet::new();
+        blocks.insert(block3);
+        blocks.insert(block1);
+        blocks.insert(block2);
+
+        let blocks_vec: Vec<_> = blocks.iter().collect();
+        assert_eq!(blocks_vec[0].start_byte, 0);
+        assert_eq!(blocks_vec[1].start_byte, 11);
+        assert_eq!(blocks_vec[2].start_byte, 21);
+    }
+
+    #[test]
+    fn test_codeblock_equality() {
+        let block1 = CodeBlock {
+            start_byte: 0,
+            end_byte: 10,
+            start_line: 1,
+            end_line: 1,
+            content: "int main() { return 0; }".to_string(),
+        };
+
+        let block2 = CodeBlock {
+            start_byte: 0,
+            end_byte: 10,
+            start_line: 1,
+            end_line: 1,
+            content: "int main() { return 0; }".to_string(),
+        };
+
+        assert_eq!(block1, block2);
+    }
+
+    #[test]
+    fn test_codeblock_inequality() {
+        let block1 = CodeBlock {
+            start_byte: 0,
+            end_byte: 10,
+            start_line: 1,
+            end_line: 1,
+            content: "int main() { return 0; }".to_string(),
+        };
+
+        let block2 = CodeBlock {
+            start_byte: 0,
+            end_byte: 10,
+            start_line: 1,
+            end_line: 1,
+            content: "int main() { return 1; }".to_string(),
+        };
+
+        assert_ne!(block1, block2);
+    }
+
+    #[test]
+    fn test_codeblock_partial_cmp() {
+        let block1 = CodeBlock {
+            start_byte: 0,
+            end_byte: 10,
+            start_line: 1,
+            end_line: 1,
+            content: "int main() { return 0; }".to_string(),
+        };
+
+        let block2 = CodeBlock {
+            start_byte: 11,
+            end_byte: 20,
+            start_line: 2,
+            end_line: 2,
+            content: "int a = 10;".to_string(),
+        };
+
+        assert!(block1 < block2);
+    }
+}
