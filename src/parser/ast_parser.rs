@@ -96,24 +96,54 @@ mod tests {
         file.write_all(content.as_bytes()).expect("Failed to write to temp file");
         path
     }
-
+    
     #[test]
     fn test_parse_c_file() {
-        let content = "int main() { return 0; }";
+        let content = r#"
+        #include <stdio.h>
+        
+        void print_hello() {
+            printf("Hello, World!\n");
+        }
+        
+        int main() {
+            print_hello();
+            return 0;
+        }
+        "#;
         let file_path = create_temp_file(content, "c");
-
+    
         let result = parse_file(&file_path, 5);
+    
+        assert!(result.is_ok(), "Parsing C file failed");
+        let (code_blocks, _tree, source_code) = result.unwrap();
+    
+        assert_eq!(source_code, content);
+        assert!(code_blocks.len() > 0);
+
+        let result = parse_file(&file_path, 20);
 
         assert!(result.is_ok(), "Parsing C file failed");
         let (code_blocks, _tree, source_code) = result.unwrap();
 
         assert_eq!(source_code, content);
-        assert!(code_blocks.len() > 0);
+        assert_eq!(code_blocks.len(), 0);
     }
 
     #[test]
     fn test_parse_cpp_file() {
-        let content = "#include <iostream>\nint main() { std::cout << \"Hello, World!\" << std::endl; return 0; }";
+        let content = r#"
+        #include <iostream>
+        
+        void print_hello() {
+            std::cout << "Hello, World!" << std::endl;
+        }
+        
+        int main() {
+            print_hello();
+            return 0;
+        }
+        "#;
         let file_path = create_temp_file(content, "cpp");
 
         let result = parse_file(&file_path, 5);
@@ -123,11 +153,31 @@ mod tests {
 
         assert_eq!(source_code, content);
         assert!(code_blocks.len() > 0);
+
+        let result = parse_file(&file_path, 20);
+
+        assert!(result.is_ok(), "Parsing C++ file failed");
+        let (code_blocks, _tree, source_code) = result.unwrap();
+
+        assert_eq!(source_code, content);
+        assert_eq!(code_blocks.len(), 0);
     }
 
     #[test]
     fn test_parse_java_file() {
-        let content = "public class Test { public static void main(String[] args) { System.out.println(\"Hello, World!\"); } }";
+        let content = r#"
+        public class Main {
+            public static void main(String[] args) {
+                System.out.println("Hello, World!");
+                
+                print_hello();
+            }
+            
+            public static void print_hello() {
+                System.out.println("Hello, World!");
+            }
+        }
+        "#;
         let file_path = create_temp_file(content, "java");
 
         let result = parse_file(&file_path, 5);
@@ -137,11 +187,28 @@ mod tests {
 
         assert_eq!(source_code, content);
         assert!(code_blocks.len() > 0);
+
+        let result = parse_file(&file_path, 20);
+
+        assert!(result.is_ok(), "Parsing Java file failed");
+        let (code_blocks, _tree, source_code) = result.unwrap();
+
+        assert_eq!(source_code, content);
+        assert_eq!(code_blocks.len(), 0);
     }
 
     #[test]
     fn test_parse_python_file() {
-        let content = "def main():\n    print(\"Hello, World!\")";
+        let content = r#"
+        def print_hello():
+            print("Hello, World!")
+            
+        def main():
+            print_hello()
+            
+        if __name__ == "__main__":
+            main()
+        "#;
         let file_path = create_temp_file(content, "py");
 
         let result = parse_file(&file_path, 5);
@@ -151,6 +218,14 @@ mod tests {
 
         assert_eq!(source_code, content);
         assert!(code_blocks.len() > 0);
+
+        let result = parse_file(&file_path, 20);
+
+        assert!(result.is_ok(), "Parsing Python file failed");
+        let (code_blocks, _tree, source_code) = result.unwrap();
+
+        assert_eq!(source_code, content);
+        assert_eq!(code_blocks.len(), 0);
     }
 
     #[test]
