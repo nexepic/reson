@@ -1,28 +1,11 @@
-use std::collections::{BTreeSet, HashMap};
 use serde::Serialize;
-use std::hash::{Hash, Hasher};
+use std::collections::{BTreeSet, HashMap};
 
-#[derive(Serialize, Debug, Eq, Clone)]
+#[derive(Serialize, Debug, Clone)]
 pub struct DuplicateBlock {
     pub start_line_number: usize,
     pub end_line_number: usize,
     pub source_file: String,
-}
-
-impl PartialEq for DuplicateBlock {
-    fn eq(&self, other: &Self) -> bool {
-        self.start_line_number == other.start_line_number
-            && self.end_line_number == other.end_line_number
-            && self.source_file == other.source_file
-    }
-}
-
-impl Hash for DuplicateBlock {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.start_line_number.hash(state);
-        self.end_line_number.hash(state);
-        self.source_file.hash(state);
-    }
 }
 
 #[derive(Serialize)]
