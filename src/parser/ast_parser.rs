@@ -124,12 +124,12 @@ mod tests {
     fn test_parse_c_file() {
         let content = "int main() { return 0; }";
         let file_path = create_temp_file(content, "c");
-    
+
         let result = parse_file(&file_path);
-    
+
         assert!(result.is_ok(), "Parsing C file failed");
         let (code_blocks, _tree, source_code) = result.unwrap();
-    
+
         assert_eq!(source_code, content);
         assert!(code_blocks.len() > 0);
     }
@@ -191,17 +191,17 @@ mod tests {
     fn test_get_parent_content() {
         let content = "int main() { int a = 10; return a; }";
         let file_path = create_temp_file(content, "c");
-    
+
         let result = parse_file(&file_path).expect("Failed to parse file");
         let (code_blocks, tree, source_code) = result;
-    
+
         // Convert BTreeSet to Vec for indexing
         let code_blocks_vec: Vec<_> = code_blocks.iter().collect();
-    
+
         // Assuming we want to extract parent node content for the first block
         let target_block = &code_blocks_vec[0];
         let parent_content = get_parent_content(&tree, &source_code, target_block.start_byte, target_block.end_byte);
-    
+
         assert!(parent_content.is_some(), "Parent content should exist");
         assert!(parent_content.unwrap().contains("main"));
     }
