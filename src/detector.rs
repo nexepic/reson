@@ -1,4 +1,4 @@
-use crate::parser::ast_parser::{parse_file, get_parent_content};
+use crate::parser::ast_parser::{parse_file};
 use std::collections::{HashMap, BTreeSet};
 use std::fs::File;
 use std::io::Write;
@@ -37,7 +37,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
         pb.set_message(file.to_string_lossy().to_string());
     
         // Parse file and store blocks on the heap using Box
-        if let Ok((blocks, _tree, _source_code)) = parse_file(&file) {
+        if let Ok((blocks, _tree, _source_code)) = parse_file(&file, args.threshold) {
             let file_path = file.to_string_lossy().to_string();
             let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
             let language = get_language_from_extension(extension).unwrap_or_else(|| panic!("Unsupported file extension"));
@@ -47,10 +47,6 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
             let processed_blocks: Vec<(String, Option<ParentFingerprint>, DuplicateBlock)> = pool.install(|| {
                 blocks.par_iter()
                     .filter_map(|block| {
-                        let block_length = block.end_line - block.start_line + 1;
-                        if block_length < args.threshold {
-                            return None;
-                        }
     
                         let (fingerprint, _ast_representation) = compute_ast_fingerprint(&block.content, language);
     
