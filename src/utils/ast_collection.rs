@@ -70,11 +70,16 @@ mod tests {
         */
         int main() {
             // This is a comment
+            int a = 0;
+            /*
+            Another comment
+            */
             return 0; // Another comment
         }
         "#;
         let content_without_comments = r#"
         int main() {
+            int a = 0;
             return 0;
         }
         "#;
@@ -99,11 +104,16 @@ mod tests {
         */
         int main() {
             // This is a comment
+            int a = 0;
+            /*
+            Another comment
+            */
             return 0; // Another comment
         }
         "#;
         let content_without_comments = r#"
         int main() {
+            int a = 0;
             return 0;
         }
         "#;
@@ -129,6 +139,9 @@ mod tests {
         public class Test {
             // This is a comment
             public static void main(String[] args) {
+                /*
+                Another comment
+                */
                 System.out.println("Hello, World!"); // Another comment
             }
         }
@@ -161,11 +174,16 @@ mod tests {
         */
         function main() {
             // This is a comment
+            let a = 0;
+            /*
+            Another comment
+            */
             return 0; // Another comment
         }
         "#;
         let content_without_comments = r#"
         function main() {
+            let a = 0;
             return 0;
         }
         "#;
@@ -218,6 +236,10 @@ mod tests {
         */
         func main() {
             // This is a comment
+            var a int = 0
+            /*
+            Another comment
+            */
             fmt.Println("Hello, World!") // Another comment
         }
         "#;
@@ -227,6 +249,7 @@ mod tests {
         import "fmt"
         
         func main() {
+            var a int = 0
             fmt.Println("Hello, World!")
         }
         "#;
@@ -251,11 +274,16 @@ mod tests {
         */
         fn main() {
             // This is a comment
+            let a = 0;
+            /*
+            Another comment
+            */
             println!("Hello, World!"); // Another comment
         }
         "#;
         let content_without_comments = r#"
         fn main() {
+            let a = 0;
             println!("Hello, World!");
         }
         "#;
