@@ -51,6 +51,9 @@ fn traverse_tree(cursor: &mut tree_sitter::TreeCursor, source: &str, code_blocks
         let node = cursor.node();
         if node.is_named() {
             let content = source[node.start_byte()..node.end_byte()].to_string();
+            let parent_content = node.parent().map(|parent_node| {
+                source[parent_node.start_byte()..parent_node.end_byte()].to_string()
+            });
 
             code_blocks.insert(CodeBlock {
                 start_byte: node.start_byte(),
@@ -58,6 +61,7 @@ fn traverse_tree(cursor: &mut tree_sitter::TreeCursor, source: &str, code_blocks
                 start_line: node.start_position().row + 1,
                 end_line: node.end_position().row + 1,
                 content: content.clone(),
+                parent_content,
             });
 
             if cursor.goto_first_child() {

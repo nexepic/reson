@@ -35,13 +35,13 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
 
     for file in files {
         pb.set_message(file.to_string_lossy().to_string());
-
+    
         // Parse file and store blocks on the heap using Box
-        if let Ok((blocks, tree, source_code)) = parse_file(&file) {
+        if let Ok((blocks, _tree, _source_code)) = parse_file(&file) {
             let file_path = file.to_string_lossy().to_string();
             let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
             let language = get_language_from_extension(extension).unwrap_or_else(|| panic!("Unsupported file extension"));
-
+    
             // Move blocks to heap to avoid stack overflow
             let blocks = Box::new(blocks);
             let processed_blocks: Vec<(String, Option<ParentFingerprint>, DuplicateBlock)> = pool.install(|| {
@@ -51,41 +51,41 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
                         if block_length < args.threshold {
                             return None;
                         }
-
+    
                         let (fingerprint, _ast_representation) = compute_ast_fingerprint(&block.content, language);
-
+    
                         // Check if the block already exists
                         if let Some(existing_blocks) = fingerprints.get(&fingerprint) {
                             if existing_blocks.iter().any(|b| b.start_line_number == block.start_line && b.end_line_number == block.end_line && b.source_file == file_path) {
                                 return None; // Skip insertion if the block already exists
                             }
                         }
-
+    
                         let duplicate_block = DuplicateBlock {
                             start_line_number: block.start_line,
                             end_line_number: block.end_line,
                             source_file: file_path.clone(),
                         };
-
-                        let parent_fingerprint = if let Some(parent_content) = get_parent_content(&tree, &source_code, block.start_byte, block.end_byte) {
-                            let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(&parent_content, language);
+    
+                        let parent_fingerprint = if let Some(parent_content) = &block.parent_content {
+                            let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(parent_content, language);
                             Some(ParentFingerprint {
                                 fingerprint: parent_fingerprint,
-                                content: parent_content,
+                                content: parent_content.clone(),
                                 ast_content: ast_representation,
                             })
                         } else {
                             None
                         };
-
+    
                         Some((fingerprint, parent_fingerprint, duplicate_block))
                     })
                     .collect()
             });
-
+    
             for (fingerprint, parent_fingerprint, duplicate_block) in processed_blocks {
                 fingerprints.entry(fingerprint.clone()).or_default().push(duplicate_block);
-
+    
                 if let Some(parent) = parent_fingerprint {
                     parent_fingerprints.insert(fingerprint.clone(), parent);
                 }
@@ -217,7 +217,7 @@ mod tests {
         assert!(summary["duplicateLines"].as_u64().unwrap() > 0);
         assert!(summary["duplicateFiles"].as_u64().unwrap() > 0);
     }
-    
+
     #[test]
     fn test_detect_duplicates_with_excludes() {
         let test_dir = setup_test_environment();
