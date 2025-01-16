@@ -47,10 +47,11 @@ fn extract_code_blocks(tree: Tree, source: &str) -> Result<BTreeSet<CodeBlock>, 
 }
 
 fn traverse_tree(cursor: &mut tree_sitter::TreeCursor, source: &str, code_blocks: &mut BTreeSet<CodeBlock>) {
-    loop {
-        let node = cursor.node();
+    let mut stack = vec![cursor.node()];
+
+    while let Some(node) = stack.pop() {
         if node.is_named() {
-            let content = source[node.start_byte()..node.end_byte()].to_string();
+            let content = &source[node.start_byte()..node.end_byte()];
             let parent_content = node.parent().map(|parent_node| {
                 source[parent_node.start_byte()..parent_node.end_byte()].to_string()
             });
@@ -60,18 +61,15 @@ fn traverse_tree(cursor: &mut tree_sitter::TreeCursor, source: &str, code_blocks
                 end_byte: node.end_byte(),
                 start_line: node.start_position().row + 1,
                 end_line: node.end_position().row + 1,
-                content: content.clone(),
+                content: content.to_string(),
                 parent_content,
             });
 
-            if cursor.goto_first_child() {
-                traverse_tree(cursor, source, code_blocks);
-                cursor.goto_parent();
+            let mut child = node.child(0);
+            while let Some(c) = child {
+                stack.push(c);
+                child = c.next_sibling();
             }
-        }
-
-        if !cursor.goto_next_sibling() {
-            break;
         }
     }
 }
