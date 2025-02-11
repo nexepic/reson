@@ -1,0 +1,201 @@
+# AST-based Analysis
+
+Abstract Syntax Tree (AST) is a tree representation of the abstract syntactic structure of source code written in a programming language. AST-based analysis is a technique that analyzes the structure of the code rather than plain text to ensure precise duplication detection.
+
+## About AST
+
+Consider the following code snippets in C languages:
+
+```c
+#include <stdio.h>
+
+int main() {
+    int a = 10;
+    int b = 20;
+    int c = a + b;
+    
+    printf("Sum: %d\n", c);
+    
+    return 0;
+}
+```
+The AST representation of the code snippet above would look like this:
+
+```text
+translation_unit: #include <stdio.h>
+
+    int main() {
+        int a = 10;
+        int b = 20;
+        int c = a + b;
+        
+        printf("Sum: %d\n", c);
+        
+        return 0;
+    }
+    
+  preproc_include: #include <stdio.h>
+
+    #include: #include
+    system_lib_string: <stdio.h>
+  function_definition: int main() {
+        int a = 10;
+        int b = 20;
+        int c = a + b;
+        
+        printf("Sum: %d\n", c);
+        
+        return 0;
+    }
+    primitive_type: int
+    function_declarator: main()
+      identifier: main
+      parameter_list: ()
+        (: (
+        ): )
+    compound_statement: {
+        int a = 10;
+        int b = 20;
+        int c = a + b;
+        
+        printf("Sum: %d\n", c);
+        
+        return 0;
+    }
+      {: {
+      declaration: int a = 10;
+        primitive_type: int
+        init_declarator: a = 10
+          identifier: a
+          =: =
+          number_literal: 10
+        ;: ;
+      declaration: int b = 20;
+        primitive_type: int
+        init_declarator: b = 20
+          identifier: b
+          =: =
+          number_literal: 20
+        ;: ;
+      declaration: int c = a + b;
+        primitive_type: int
+        init_declarator: c = a + b
+          identifier: c
+          =: =
+          binary_expression: a + b
+            identifier: a
+            +: +
+            identifier: b
+        ;: ;
+      expression_statement: printf("Sum: %d\n", c);
+        call_expression: printf("Sum: %d\n", c)
+          identifier: printf
+          argument_list: ("Sum: %d\n", c)
+            (: (
+            string_literal: "Sum: %d\n"
+              ": "
+              string_content: Sum: %d
+              escape_sequence: \n
+              ": "
+            ,: ,
+            identifier: c
+            ): )
+        ;: ;
+      return_statement: return 0;
+        return: return
+        number_literal: 0
+        ;: ;
+      }: }
+```
+
+## Benefits
+
+With AST-based analysis, reson can detect code duplication more accurately by comparing the structure of the code rather than plain text for the following situations:
+
+- Similar code snippets in different languages. (e.g., C and C++)
+  - For example, the following code snippets in C and C++ are structurally similar:
+```c
+int run() {
+    print_hello_test_f1();
+    print_hello_test_f2();
+    return 0;
+}
+```
+```cpp
+int run() {
+    print_hello_test_h1();
+    print_hello_test_h2();
+    return 0;
+}
+```
+They would have the same AST structure, and reson can detect the duplication elegantly.
+
+- The AST representation of the code snippet is based on the complete code block, and it can easily handle many cases such as the literal changes.
+  - Consider the following code snippets:
+```c
+// Code block 1
+int run() {
+    for (int i = 0; i < 10; i++) {
+        printf("Hello, World!\n");
+    }
+    return 0;
+}
+```
+```c
+// Code block 2
+int run() {
+    for (int i = 0; i < 10; i++) {
+        printf("Hello, World again!\n");
+    }
+    return 0;
+}
+```
+Some duplication detection tools may not be able to detect the duplication between the two code blocks because of the literal changes. They may identify the following code blocks as the same:
+```c
+int run() {
+    for (int i = 0; i < 10; i++) {
+```
+
+However, reson can detect the whole duplication block.
+
+- reson can handle the code block with comments elegantly.
+  - reson can detect the duplication between the following code blocks:
+```c
+int run() {
+    for (int i = 0; i < 10; i++) {
+        printf("Hello, World!\n");
+    }
+    return 0;
+}
+```
+```c
+int run() {
+    for (int i = 0; i < 10; i++) {
+        // Print Hello, World!
+        printf("Hello, World!\n");
+    }
+    return 0;
+}
+```
+  - Or even much more complex cases:
+```c
+int run() {
+    for (int i = 0; i < 10; i++) {
+        // Print Hello, World!
+        printf("Hello, World!\n");
+    }
+    return 0;
+}
+```
+```c
+int run() {
+    /*
+    * This is a comment
+    */
+    for (int i = 0; i < 10; i++) {
+        // This is a comment
+        printf("Hello, World!\n"); // Print Hello, World!
+    }
+    return 0;
+}
+```
