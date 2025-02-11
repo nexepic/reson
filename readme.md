@@ -1,7 +1,7 @@
 [![Build Status](https://github.com/nexepic/reson/actions/workflows/ci.yml/badge.svg)](https://github.com/nexepic/reson/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/nexepic/reson/branch/main/graph/badge.svg)](https://codecov.io/gh/nexepic/reson)
 
-Reson is a robust command-line tool designed for detecting code duplication across multiple source files. By leveraging Abstract Syntax Tree (AST) analysis, Reson ensures accurate and reliable detection of duplicated code, supporting various programming languages such as C/C++, Java, and Python.
+reson is a robust command-line tool designed for detecting code duplication across multiple source files. By leveraging Abstract Syntax Tree (AST) analysis, reson ensures accurate and reliable detection of duplicated code, supporting various programming languages such as C/C++, Java, and Python.
 
 This tool helps maintain high-quality codebases by identifying redundant code blocks, enabling effective refactoring and optimization.
 
@@ -80,7 +80,7 @@ cargo test
 
 ### Contributing
 
-We welcome contributions to enhance Reson. Feel free to open an issue or submit a pull request.
+We welcome contributions to enhance reson. Feel free to open an issue or submit a pull request.
 
 ---
 
@@ -92,4 +92,4 @@ This project is licensed under the MIT License. See the LICENSE file for details
 
 ## Acknowledgements
 
-Reson was created by Nexepic to streamline the process of detecting and managing code duplication in diverse codebases. Your feedback and contributions are highly valued!
+reson was created by Nexepic to streamline the process of detecting and managing code duplication in diverse codebases. Your feedback and contributions are highly valued!
