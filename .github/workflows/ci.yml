@@ -101,9 +101,14 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y gcc g++ libc6-dev
 
-      - name: Build project with static glibc
+      - name: Build project with static glibc (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
           RUSTFLAGS="-C target-feature=+crt-static" cargo build --release --target ${{ matrix.target }}
+
+      - name: Build project (Windows & Mac)
+        if: matrix.os != 'ubuntu-latest'
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Rename binary and set permissions
         run: |
