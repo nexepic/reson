@@ -97,8 +97,13 @@ jobs:
       - name: Install target for static linking
         run: rustup target add ${{ matrix.target }}
 
-      - name: Build project with static linking
-        run: cargo build --release --target ${{ matrix.target }}
+      - name: Install Linux dependencies (glibc)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y gcc g++ libc6-dev
+
+      - name: Build project with static glibc
+        run: |
+          RUSTFLAGS="-C target-feature=+crt-static" cargo build --release --target ${{ matrix.target }}
 
       - name: Rename binary and set permissions
         run: |
