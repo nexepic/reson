@@ -36,11 +36,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-index-
 
-      - name: Install Rust nightly
-        run: rustup toolchain install nightly-2024-12-17
+      - name: Install Rust stable
+        run: rustup toolchain install stable
 
-      - name: Set Rust nightly as default
-        run: rustup default nightly-2024-12-17
+      - name: Set Rust stable as default
+        run: rustup default stable
 
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
@@ -88,11 +88,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Install Rust nightly
-        run: rustup toolchain install nightly-2024-12-17
+      - name: Install Rust stable
+        run: rustup toolchain install stable
 
-      - name: Set Rust nightly as default
-        run: rustup default nightly-2024-12-17
+      - name: Set Rust stable as default
+        run: rustup default stable
 
       - name: Install target for static linking
         run: rustup target add ${{ matrix.target }}
