@@ -24,7 +24,6 @@ pub struct DuplicateReportXML<T> {
 pub struct ParentFingerprint {
     pub fingerprint: String,
     pub content: String,
-    pub ast_content: String,
 }
 
 #[derive(Serialize)]

@@ -2,9 +2,9 @@ use crate::parser::ast_parser::{parse_file};
 use std::collections::{HashMap, BTreeSet};
 use std::fs::File;
 use std::io::Write;
-use crate::utils::ast_collection::compute_ast_fingerprint;
+use std::sync::{Arc, Mutex};
+use crate::parser::ast_collection::compute_ast_fingerprint;
 use crate::utils::filters::filter_files;
-use crate::utils::language_mapping::get_language_from_extension;
 use indicatif::ProgressBar;
 use indicatif::ProgressStyle;
 use rayon::prelude::*;
@@ -13,8 +13,8 @@ use crate::models::detection_types::{DebugData, DuplicateBlock, DuplicateReport,
 
 pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> HashMap<String, serde_json::Value> {
     let files = filter_files(&args.source_path, &args.languages, &args.excludes, args.max_file_size);
-    let mut fingerprints: HashMap<String, Vec<DuplicateBlock>> = HashMap::new();
-    let mut parent_fingerprints: HashMap<String, ParentFingerprint> = HashMap::new();
+    let fingerprints: Arc<Mutex<HashMap<String, Vec<DuplicateBlock>>>> = Arc::new(Mutex::new(HashMap::new()));
+    let parent_fingerprints: Arc<Mutex<HashMap<String, ParentFingerprint>>> = Arc::new(Mutex::new(HashMap::new()));
     let mut exceeding_threshold_fingerprints: BTreeSet<String> = BTreeSet::new();
     let content_fingerprint_mappings: Vec<(String, usize, usize, String, String, String)> = Vec::new();
 
@@ -33,94 +33,98 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
         .build()
         .unwrap();
 
-    for file in files {
-        pb.set_message(file.to_string_lossy().to_string());
+    pool.install(|| {
+        files.par_iter().for_each(|file| {
+            pb.set_message(file.to_string_lossy().to_string());
     
-        // Parse file and store blocks on the heap using Box
-        if let Ok((blocks, _tree, _source_code)) = parse_file(&file, args.threshold) {
-            let file_path = file.to_string_lossy().to_string();
-            let extension = file.extension().and_then(|ext| ext.to_str()).unwrap_or("");
-            let language = get_language_from_extension(extension).unwrap_or_else(|| panic!("Unsupported file extension"));
+            if let Ok((blocks, _tree, _source_code)) = parse_file(file, args.threshold) {
+                let file_path = file.to_string_lossy().to_string();
     
-            // Move blocks to heap to avoid stack overflow
-            let blocks = Box::new(blocks);
-            let processed_blocks: Vec<(String, Option<ParentFingerprint>, DuplicateBlock)> = pool.install(|| {
-                blocks.par_iter()
-                    .filter_map(|block| {
+                let processed_blocks: Vec<(String, Option<ParentFingerprint>, DuplicateBlock)> = blocks.iter()
+                    .filter_map(|block_rc| {
+                        let block = block_rc.borrow();
     
-                        let (fingerprint, _ast_representation) = compute_ast_fingerprint(&block.content, language);
+                        let fingerprint = compute_ast_fingerprint(&block.code_block.ast_representation);
     
-                        // Check if the block already exists
-                        if let Some(existing_blocks) = fingerprints.get(&fingerprint) {
-                            if existing_blocks.iter().any(|b| b.start_line_number == block.start_line && b.end_line_number == block.end_line && b.source_file == file_path) {
-                                return None; // Skip insertion if the block already exists
+                        let fingerprints_lock = fingerprints.lock().unwrap();
+                        if let Some(existing_blocks) = fingerprints_lock.get(&fingerprint) {
+                            if existing_blocks.iter().any(|b|
+                                b.start_line_number == block.code_block.start_line &&
+                                    b.end_line_number == block.code_block.end_line &&
+                                    b.source_file == file_path
+                            ) {
+                                return None;
                             }
                         }
     
                         let duplicate_block = DuplicateBlock {
-                            start_line_number: block.start_line,
-                            end_line_number: block.end_line,
+                            start_line_number: block.code_block.start_line,
+                            end_line_number: block.code_block.end_line,
                             source_file: file_path.clone(),
                         };
     
-                        let parent_fingerprint = if let Some(parent_content) = &block.parent_content {
-                            let (parent_fingerprint, ast_representation) = compute_ast_fingerprint(parent_content, language);
-                            Some(ParentFingerprint {
-                                fingerprint: parent_fingerprint,
-                                content: parent_content.clone(),
-                                ast_content: ast_representation,
+                        let parent_fingerprint = block.parent.as_ref().and_then(|parent_weak| {
+                            parent_weak.upgrade().map(|parent_ref| {
+                                let parent = parent_ref.borrow();
+                                let parent_fingerprint = compute_ast_fingerprint(&parent.code_block.ast_representation);
+                                ParentFingerprint {
+                                    fingerprint: parent_fingerprint,
+                                    content: parent.code_block.content.clone(),
+                                }
                             })
-                        } else {
-                            None
-                        };
+                        });
     
                         Some((fingerprint, parent_fingerprint, duplicate_block))
                     })
-                    .collect()
-            });
+                    .collect();
     
-            for (fingerprint, parent_fingerprint, duplicate_block) in processed_blocks {
-                fingerprints.entry(fingerprint.clone()).or_default().push(duplicate_block);
-    
-                if let Some(parent) = parent_fingerprint {
-                    parent_fingerprints.insert(fingerprint.clone(), parent);
+                {
+                    let mut fingerprints_lock = fingerprints.lock().unwrap();
+                    let mut parent_fingerprints_lock = parent_fingerprints.lock().unwrap();
+                    for (fingerprint, parent_fingerprint, duplicate_block) in processed_blocks {
+                        fingerprints_lock.entry(fingerprint.clone()).or_default().push(duplicate_block);
+                        if let Some(parent) = parent_fingerprint {
+                            parent_fingerprints_lock.insert(fingerprint, parent);
+                        }
+                    }
                 }
             }
-        }
-        pb.inc(1);
-    }
+            pb.inc(1);
+        });
+    });
 
     pb.finish_with_message(format!("Processing complete in {:.2} seconds", pb.elapsed().as_secs_f64()));
 
-    for (fingerprint, blocks) in &fingerprints {
+    for (fingerprint, blocks) in fingerprints.lock().unwrap().iter() {
         if blocks.len() > 1 && (blocks[0].end_line_number - blocks[0].start_line_number + 1) >= args.threshold {
             exceeding_threshold_fingerprints.insert(fingerprint.clone());
         }
     }
-
+    
     let debug_data = DebugData {
-        parent_fingerprints: parent_fingerprints.clone(),
+        parent_fingerprints: parent_fingerprints.lock().unwrap().clone(),
         exceeding_threshold_fingerprints: exceeding_threshold_fingerprints.clone(),
         content_fingerprint_mappings: content_fingerprint_mappings.clone(),
     };
-
+    
     if args.debug {
         if let Ok(json) = serde_json::to_string_pretty(&debug_data) {
             let mut file = File::create("debug_data.json").expect("Failed to create file");
             file.write_all(json.as_bytes()).expect("Failed to write to file");
         }
     }
-
+    
     let mut duplicate_blocks = 0;
     let mut duplicate_lines = 0;
     let mut duplicate_file_set = BTreeSet::new();
-
+    
     let details: Vec<DuplicateReport> = fingerprints
-        .into_iter()
+        .lock().unwrap()
+        .iter()
         .filter(|(fingerprint, blocks)| {
             let retain = blocks.len() > 1
                 && (blocks[0].end_line_number - blocks[0].start_line_number + 1) >= args.threshold
-                && parent_fingerprints.get(fingerprint)
+                && parent_fingerprints.lock().unwrap().get(&**fingerprint)
                 .map_or(true, |pf| !exceeding_threshold_fingerprints.contains(&pf.fingerprint));
             log::debug!(
                 "Filtering fingerprint: {}, retain: {}, blocks: {:?}",
@@ -136,23 +140,23 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
             duplicate_lines += blocks.iter().map(|b| b.end_line_number - b.start_line_number + 1).sum::<usize>();
             blocks.iter().for_each(|b| { duplicate_file_set.insert(b.source_file.clone()); });
             DuplicateReport {
-                fingerprint,
+                fingerprint: fingerprint.clone(),
                 line_count: blocks[0].end_line_number - blocks[0].start_line_number + 1,
-                blocks,
+                blocks: blocks.clone(),
             }
         })
         .collect();
-
+    
     let summary = serde_json::json!({
         "duplicateBlocks": duplicate_blocks,
         "duplicateLines": duplicate_lines,
         "duplicateFiles": duplicate_file_set.len(),
     });
-
+    
     let mut result = HashMap::new();
     result.insert("summary".to_string(), summary);
     result.insert("records".to_string(), serde_json::to_value(details).unwrap());
-
+    
     result
 }
 
