@@ -30,5 +30,5 @@ pub struct ParentFingerprint {
 pub struct DebugData {
     pub parent_fingerprints: HashMap<String, ParentFingerprint>,
     pub exceeding_threshold_fingerprints: BTreeSet<String>,
-    pub content_fingerprint_mappings: Vec<(String, usize, usize, String, String, String)>, // (content, start_line, end_line, fingerprint, file_name, ast_content)
+    // pub content_fingerprint_mappings: Vec<(String, usize, usize, String, String, String)>, // (content, start_line, end_line, fingerprint, file_name, ast_content)
 }
