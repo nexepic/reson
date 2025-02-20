@@ -42,7 +42,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
                         let block = block_rc.borrow();
                         let fingerprint = compute_ast_fingerprint(&block.code_block.ast_representation);
 
-                        let fingerprints_lock = fingerprints.lock().unwrap();
+                        let mut fingerprints_lock = fingerprints.lock().unwrap();
                         if let Some(existing_blocks) = fingerprints_lock.get(&fingerprint) {
                             if existing_blocks.iter().any(|b|
                                 b.start_line_number == block.code_block.start_line &&
@@ -91,7 +91,6 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
 
     pb.finish_with_message(format!("Processing complete in {:.2} seconds", pb.elapsed().as_secs_f64()));
 
-    // 计算超过阈值的 fingerprints，确保此处计算是单线程操作
     let exceeding_threshold_fingerprints: BTreeSet<String> = {
         let fingerprints_lock = fingerprints.lock().unwrap();
         fingerprints_lock.iter()
@@ -114,7 +113,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
 
     let (duplicate_blocks, duplicate_lines, duplicate_file_set): (usize, usize, BTreeSet<String>) = fingerprints
         .lock().unwrap()
-        .par_iter()
+        .iter()
         .filter(|(fingerprint, blocks)| {
             blocks.len() > 1
                 && (blocks[0].end_line_number - blocks[0].start_line_number + 1) >= args.threshold
@@ -126,7 +125,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
             let files: BTreeSet<String> = blocks.iter().map(|b| b.source_file.clone()).collect();
             (blocks.len(), line_count, files)
         })
-        .reduce(|| (0, 0, BTreeSet::new()), |(acc_blocks, acc_lines, mut acc_files), (b, l, f)| {
+        .fold((0, 0, BTreeSet::new()), |(acc_blocks, acc_lines, mut acc_files), (b, l, f)| {
             acc_files.extend(f);
             (acc_blocks + b, acc_lines + l, acc_files)
         });
