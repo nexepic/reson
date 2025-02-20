@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::cmp::Ordering;
+use std::rc::{Rc, Weak};
 
 #[derive(Debug, Clone, Eq)]
 pub struct CodeBlock {
@@ -7,8 +9,16 @@ pub struct CodeBlock {
     pub start_line: usize,
     pub end_line: usize,
     pub content: String,
-    pub parent_content: Option<String>,
+    pub ast_representation: String,
 }
+
+#[derive(Debug)]
+pub struct CodeBlockNode {
+    pub code_block: CodeBlock,
+    pub parent: Option<Weak<RefCell<CodeBlockNode>>>,
+}
+
+pub type CodeBlockRef = Rc<RefCell<CodeBlockNode>>;
 
 impl Ord for CodeBlock {
     fn cmp(&self, other: &Self) -> Ordering {
@@ -49,7 +59,7 @@ mod tests {
             start_line: 1,
             end_line: 1,
             content: "int main() { return 0; }".to_string(),
-            parent_content: None,
+            ast_representation: "".to_string()
         };
 
         let block2 = CodeBlock {
@@ -58,7 +68,7 @@ mod tests {
             start_line: 2,
             end_line: 2,
             content: "int a = 10;".to_string(),
-            parent_content: None,
+            ast_representation: "".to_string()
         };
 
         let block3 = CodeBlock {
@@ -67,7 +77,7 @@ mod tests {
             start_line: 3,
             end_line: 3,
             content: "return a;".to_string(),
-            parent_content: None,
+            ast_representation: "".to_string()
         };
 
         let mut blocks = BTreeSet::new();
@@ -89,7 +99,7 @@ mod tests {
             start_line: 1,
             end_line: 1,
             content: "int main() { return 0; }".to_string(),
-            parent_content: None,
+            ast_representation: "".to_string()
         };
 
         let block2 = CodeBlock {
@@ -98,7 +108,7 @@ mod tests {
             start_line: 1,
             end_line: 1,
             content: "int main() { return 0; }".to_string(),
-            parent_content: None,
+            ast_representation: "".to_string()
         };
 
         assert_eq!(block1, block2);
@@ -112,7 +122,7 @@ mod tests {
             start_line: 1,
             end_line: 1,
             content: "int main() { return 0; }".to_string(),
-            parent_content: None,
+            ast_representation: "".to_string()
         };
 
         let block2 = CodeBlock {
@@ -121,7 +131,7 @@ mod tests {
             start_line: 1,
             end_line: 1,
             content: "int main() { return 1; }".to_string(),
-            parent_content: None,
+            ast_representation: "".to_string()
         };
 
         assert_ne!(block1, block2);
@@ -135,7 +145,7 @@ mod tests {
             start_line: 1,
             end_line: 1,
             content: "int main() { return 0; }".to_string(),
-            parent_content: None,
+            ast_representation: "".to_string()
         };
 
         let block2 = CodeBlock {
@@ -144,7 +154,7 @@ mod tests {
             start_line: 2,
             end_line: 2,
             content: "int a = 10;".to_string(),
-            parent_content: None,
+            ast_representation: "".to_string()
         };
 
         assert!(block1 < block2);

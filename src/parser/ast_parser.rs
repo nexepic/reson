@@ -1,7 +1,8 @@
-use std::collections::BTreeSet;
-use crate::models::code_types::CodeBlock;
+use std::cell::RefCell;
+use crate::models::code_types::{CodeBlock, CodeBlockNode, CodeBlockRef};
 use crate::utils::language_mapping::get_language_from_extension;
 use std::fs;
+use std::rc::{Rc, Weak};
 use tree_sitter::{Parser, Tree};
 use tree_sitter_c::language as c_language;
 use tree_sitter_cpp::language as cpp_language;
@@ -10,8 +11,11 @@ use tree_sitter_java::language as java_language;
 use tree_sitter_javascript::language as javascript_language;
 use tree_sitter_python::language as python_language;
 use tree_sitter_rust::language as rust_language;
+use reson::TREE_PARSING_MAX_DEPTH;
+use crate::parser::ast_node::should_skip_node;
+use crate::parser::ast_collection::collect_ast_content;
 
-pub fn parse_file(file_path: &std::path::Path, threshold: usize) -> Result<(BTreeSet<CodeBlock>, Tree, String), String> {
+pub fn parse_file(file_path: &std::path::Path, threshold: usize) -> Result<(Vec<CodeBlockRef>, Tree, String), String> {
     let source_code = fs::read_to_string(file_path).map_err(|_| "Failed to read file")?;
     let mut parser = Parser::new();
 
@@ -32,21 +36,32 @@ pub fn parse_file(file_path: &std::path::Path, threshold: usize) -> Result<(BTre
     parser.set_language(language).map_err(|_| "Failed to set language")?;
     let tree = parser.parse(&source_code, None).ok_or("Failed to parse code")?;
 
-    let code_blocks = extract_code_blocks(tree.clone(), &source_code, threshold)?;
+    let code_blocks = extract_code_blocks(tree.clone(), &source_code, threshold);
 
     Ok((code_blocks, tree, source_code))
 }
 
-fn extract_code_blocks(tree: Tree, source: &str, threshold: usize) -> Result<BTreeSet<CodeBlock>, String> {
+pub fn extract_code_blocks(tree: Tree, source: &str, threshold: usize) -> Vec<CodeBlockRef> {
     let mut cursor = tree.walk();
-    let mut code_blocks = BTreeSet::new();
+    let mut code_blocks = Vec::new();
 
-    traverse_tree(&mut cursor, source, &mut code_blocks, threshold);
+    traverse_tree(&mut cursor, source, &mut code_blocks, threshold, 0, None);
 
-    Ok(code_blocks)
+    code_blocks
 }
 
-fn traverse_tree(cursor: &mut tree_sitter::TreeCursor, source: &str, code_blocks: &mut BTreeSet<CodeBlock>, threshold: usize) {
+fn traverse_tree(
+    cursor: &mut tree_sitter::TreeCursor,
+    source: &str,
+    code_blocks: &mut Vec<CodeBlockRef>,
+    threshold: usize,
+    depth: usize,
+    parent: Option<Weak<RefCell<CodeBlockNode>>>,
+) {
+    if depth > TREE_PARSING_MAX_DEPTH {
+        return;
+    }
+
     loop {
         let node = cursor.node();
         if node.is_named() {
@@ -55,24 +70,37 @@ fn traverse_tree(cursor: &mut tree_sitter::TreeCursor, source: &str, code_blocks
             let line_count = end_line - start_line + 1;
 
             if line_count >= threshold {
+                // Skip analyzing child nodes if the current node should be skipped
+                if should_skip_node(&node, source) {
+                    log::debug!("Skipping node at lines {}-{}", start_line, end_line);
+                    return;
+                }
+                
                 let content = source[node.start_byte()..node.end_byte()].to_string();
-                let parent_content = node.parent().map(|parent_node| {
-                    source[parent_node.start_byte()..parent_node.end_byte()].to_string()
-                });
+                let ast_representation = collect_ast_content(node, source);
 
-                code_blocks.insert(CodeBlock {
+                let code_block = CodeBlock {
                     start_byte: node.start_byte(),
                     end_byte: node.end_byte(),
                     start_line,
                     end_line,
                     content,
-                    parent_content,
-                });
-            }
+                    ast_representation,
+                };
 
-            if cursor.goto_first_child() {
-                traverse_tree(cursor, source, code_blocks, threshold);
-                cursor.goto_parent();
+                // Create a new CodeBlockNode
+                let node_ref = Rc::new(RefCell::new(CodeBlockNode {
+                    code_block,
+                    parent: parent.clone(),
+                }));
+
+                code_blocks.push(node_ref.clone());
+
+                // Recursively traverse child nodes, passing the current node as the parent
+                if cursor.goto_first_child() {
+                    traverse_tree(cursor, source, code_blocks, threshold, depth + 1, Some(Rc::downgrade(&node_ref)));
+                    cursor.goto_parent();
+                }
             }
         }
 

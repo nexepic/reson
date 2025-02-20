@@ -1,65 +1,60 @@
 use blake3::Hasher;
-use tree_sitter::{Node, Parser};
+use tree_sitter::Node;
 
-pub fn compute_ast_fingerprint(content: &str, language: &str) -> (String, String) {
-    log::debug!("Computing AST fingerprint for content: {}", content);
+pub fn compute_ast_fingerprint(ast_representation: &str) -> String {
+    log::debug!("Computing AST fingerprint for AST representation: {}", ast_representation);
     let mut hasher = Hasher::new();
 
-    // Parse the AST from content
-    let mut parser = Parser::new();
-    let tree_sitter_language = match language {
-        "c" => tree_sitter_c::language(),
-        "cpp" => tree_sitter_cpp::language(),
-        "java" => tree_sitter_java::language(),
-        "javascript" => tree_sitter_javascript::language(),
-        "python" => tree_sitter_python::language(),
-        "golang" => tree_sitter_go::language(),
-        "rust" => tree_sitter_rust::language(),
-        _ => panic!("Unsupported language"),
-    };
-    parser.set_language(tree_sitter_language).expect("Failed to set language");
-    let parsed_tree = parser.parse(content, None).expect("Failed to parse content");
-    let ast_representation = collect_ast_content(parsed_tree.root_node(), content);
-
-    log::debug!("AST representation: {}", ast_representation);
     hasher.update(ast_representation.as_bytes());
     let fingerprint = hasher.finalize().to_hex().to_string();
     log::debug!("Computed fingerprint: {}", fingerprint);
-    (fingerprint, ast_representation)
+    fingerprint
 }
 
 /// Recursively collect the content of all nodes in the AST
-fn collect_ast_content(node: Node, source_code: &str) -> String {
-    let mut content = String::new();
-    if node.is_named() && !node.kind().contains("comment") {
-        let start_byte = node.start_byte();
-        let end_byte = node.end_byte();
-        let node_text = &source_code[start_byte..end_byte];
-        log::debug!("Node type: {:?}, text: {:?}", node.kind(), node_text);
-        content.push_str(&format!("{:?}\n", node.kind()));
+pub fn collect_ast_content(node: Node, source: &str) -> String {
+    let mut ast_output = String::new();
+    let mut stack = vec![node];
+
+    while let Some(current_node) = stack.pop() {
+        if current_node.is_named() && !current_node.kind().contains("comment") {
+            let node_text = &source[current_node.start_byte()..current_node.end_byte()];
+            log::debug!("Node type: {:?}, text: {:?}", current_node.kind(), node_text);
+            ast_output.push_str(&format!("{:?}\n", current_node.kind()));
+        }
+
+        for child in current_node.children(&mut current_node.walk()) {
+            stack.push(child);
+        }
     }
-    for child in node.children(&mut node.walk()) {
-        content.push_str(&collect_ast_content(child, source_code));
-    }
-    content
+
+    ast_output
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tree_sitter::Parser;
 
     #[test]
     fn test_compute_ast_fingerprint() {
-        let content = r#"
-        fn main() {
-            println!("Hello, world!");
-        }
+        let ast_representation = r#"
+        (source_file
+          (function_item
+            name: (identifier)
+            parameters: (parameters)
+            body: (block
+              (expression_statement
+                (macro_invocation
+                  name: (identifier)
+                  arguments: (token_tree
+                    (literal)))))))
         "#;
-        // Test for Rust language
-        let (fingerprint, ast_representation) = compute_ast_fingerprint(content, "rust");
-
+    
+        let fingerprint = compute_ast_fingerprint(ast_representation);
+    
         assert!(!fingerprint.is_empty());
-        assert!(ast_representation.contains("expression_statement"));
+        assert_eq!(fingerprint.len(), 64); // Blake3 hash length in hex is 64 characters
     }
 
     #[test]
@@ -298,12 +293,5 @@ mod tests {
         
         assert!(!ast_representation.contains("comment"));
         assert_eq!(ast_representation, ast_representation_without_comments);
-    }
-
-    #[test]
-    #[should_panic(expected = "Unsupported language")]
-    fn test_compute_ast_fingerprint_unsupported_language() {
-        let content = "int main() { return 0; }";
-        compute_ast_fingerprint(content, "unsupported_language");
     }
 }
