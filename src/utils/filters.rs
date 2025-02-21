@@ -46,9 +46,8 @@ pub fn filter_files(source_path: &Path, languages: &[String], excludes: &[String
 
 #[cfg(test)]
 mod tests {
+    use crate::utils::files::{create_temp_file, delete_temp_file};
     use super::*;
-    use std::fs::File;
-    use std::io::Write;
 
     #[test]
     fn test_filter_files_with_single_file() {
@@ -77,22 +76,21 @@ mod tests {
 
     #[test]
     fn test_filter_files_with_large_file() {
-        let test_dir = Path::new("tests/rust");
-        let large_file_path = test_dir.join("large_file.rs");
-
-        // Create a large file for testing
-        let mut file = File::create(&large_file_path).unwrap();
-        file.write_all(&vec![0; 2 * 1048576]).unwrap(); // 2 MB file
-
+        let content = &vec![0; 2 * 1048576]; // 2 MB content
+        let large_file_path = create_temp_file(&String::from_utf8_lossy(content), "rs");
+    
+        // Debugging: Check if the file was created
+        assert!(large_file_path.exists(), "Temporary file was not created");
+    
         let excludes = vec![];
         let languages = vec!["rust".to_string()];
         let max_file_size = 1048576; // 1 MB
-        let filtered_files = filter_files(test_dir, &languages, &excludes, max_file_size);
-
+        let filtered_files = filter_files(&large_file_path.parent().unwrap(), &languages, &excludes, max_file_size);
+    
         assert!(!filtered_files.contains(&large_file_path));
-
+    
         // Clean up
-        fs::remove_file(large_file_path).unwrap();
+        delete_temp_file(&large_file_path);
     }
 
     #[test]

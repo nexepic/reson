@@ -25,3 +25,4 @@ blake3 = "1.5.5"
 rayon = "1.10.0"
 quick-xml = { version = "0.37.2", features = ["serialize"] }
 dashmap = "6.1.0"
+uuid = { version = "1.14.0", features = ["v4"] }
