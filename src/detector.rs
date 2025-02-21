@@ -1,17 +1,18 @@
-use crate::parser::ast_parser::{parse_file};
-use std::collections::{HashMap, BTreeSet};
-use std::fs::File;
-use std::io::Write;
-use dashmap::DashMap;
+use crate::models::detection_types::{DebugData, DuplicateBlock, DuplicateReport, ParentFingerprint};
 use crate::parser::ast_collection::compute_ast_fingerprint;
+use crate::parser::ast_parser::parse_file;
 use crate::utils::filters::filter_files;
+use dashmap::DashMap;
 use indicatif::ProgressBar;
 use indicatif::ProgressStyle;
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
-use crate::models::detection_types::{DebugData, DuplicateBlock, DuplicateReport, ParentFingerprint};
+use serde_json::Value;
+use std::collections::BTreeSet;
+use std::fs::File;
+use std::io::Write;
 
-pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> HashMap<String, serde_json::Value> {
+pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Value {
     let files = filter_files(&args.source_path, &args.languages, &args.excludes, args.max_file_size);
     let fingerprints: DashMap<String, Vec<DuplicateBlock>> = DashMap::new();
     let parent_fingerprints: DashMap<String, ParentFingerprint> = DashMap::new();
@@ -144,20 +145,21 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
         "duplicateLines": duplicate_lines,
         "duplicateFiles": duplicate_file_set.len(),
     });
+
+    let result = serde_json::json!({
+        "summary": summary,
+        "records": serde_json::to_value(details).unwrap()
+    });
     
-    let mut result = HashMap::new();
-    result.insert("summary".to_string(), summary);
-    result.insert("records".to_string(), serde_json::to_value(details).unwrap());
-    
-    result
+    Value::Object(result.as_object().unwrap().clone())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::CliArgs;
     use std::fs;
     use std::path::{Path, PathBuf};
-    use crate::cli::CliArgs;
 
     fn setup_test_environment() -> PathBuf {
         let test_dir = Path::new("./tests/rust");
