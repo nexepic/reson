@@ -1,5 +1,30 @@
-[![Build Status](https://github.com/nexepic/reson/actions/workflows/ci.yml/badge.svg)](https://github.com/nexepic/reson/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/nexepic/reson/branch/main/graph/badge.svg)](https://codecov.io/gh/nexepic/reson)
+<p style="text-align: center;">
+    <a href="https://nexepic.github.io/reson">
+        <picture>
+            <source srcset="./docs/_media/icon-light.svg" media="(prefers-color-scheme: dark)">
+            <img src="./docs/_media/icon.svg" alt="icon" />
+        </picture>
+    </a>
+</p>
+
+<p style="text-align: center;">
+  A high-performance code duplication detector based on Abstract Syntax Tree (AST).
+</p>
+
+<p style="text-align: center;">
+    <a href="https://github.com/nexepic/reson/actions/workflows/ci.yml">
+        <img alt="Build Status" src="https://github.com/nexepic/reson/actions/workflows/ci.yml/badge.svg" />
+    </a>
+    <a href="https://codecov.io/gh/nexepic/reson">
+        <img alt="codecov" src="https://codecov.io/gh/nexepic/reson/branch/main/graph/badge.svg" />
+    </a>
+    <a>
+        <img alt="License" src="https://img.shields.io/github/license/nexepic/reson">
+    </a>
+    <a>
+        <img alt="GitHub release" src="https://img.shields.io/github/v/release/nexepic/reson">
+    </a>
+</p>
 
 reson is a robust command-line tool designed for detecting code duplication across multiple source files. By leveraging Abstract Syntax Tree (AST) analysis, reson ensures accurate and reliable detection of duplicated code, supporting various programming languages such as C/C++, Java, and Python.
 
