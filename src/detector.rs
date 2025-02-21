@@ -2,7 +2,7 @@ use crate::parser::ast_parser::{parse_file};
 use std::collections::{HashMap, BTreeSet};
 use std::fs::File;
 use std::io::Write;
-use std::sync::{Arc, Mutex};
+use dashmap::DashMap;
 use crate::parser::ast_collection::compute_ast_fingerprint;
 use crate::utils::filters::filter_files;
 use indicatif::ProgressBar;
@@ -13,8 +13,8 @@ use crate::models::detection_types::{DebugData, DuplicateBlock, DuplicateReport,
 
 pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> HashMap<String, serde_json::Value> {
     let files = filter_files(&args.source_path, &args.languages, &args.excludes, args.max_file_size);
-    let fingerprints: Arc<Mutex<HashMap<String, Vec<DuplicateBlock>>>> = Arc::new(Mutex::new(HashMap::new()));
-    let parent_fingerprints: Arc<Mutex<HashMap<String, ParentFingerprint>>> = Arc::new(Mutex::new(HashMap::new()));
+    let fingerprints: DashMap<String, Vec<DuplicateBlock>> = DashMap::new();
+    let parent_fingerprints: DashMap<String, ParentFingerprint> = DashMap::new();
 
     let pb = ProgressBar::new(files.len() as u64);
     pb.set_style(
@@ -31,34 +31,19 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
         .unwrap();
 
     pool.install(|| {
-        files.par_iter().for_each(|file| {
-            pb.set_message(file.to_string_lossy().to_string());
-
-            if let Ok((blocks, _tree, _source_code)) = parse_file(file, args.threshold) {
-                let file_path = file.to_string_lossy().to_string();
-
-                let processed_blocks: Vec<(String, Option<ParentFingerprint>, DuplicateBlock)> = blocks.iter()
-                    .filter_map(|block_rc| {
+        let processed_blocks: Vec<(String, Option<ParentFingerprint>, DuplicateBlock)> = files.par_iter()
+            .filter_map(|file| {
+                pb.set_message(file.to_string_lossy().to_string());
+                if let Ok((blocks, _tree, _source_code)) = parse_file(file, args.threshold) {
+                    let file_path = file.to_string_lossy().to_string();
+                    let result = Some(blocks.iter().filter_map(|block_rc| {
                         let block = block_rc.borrow();
                         let fingerprint = compute_ast_fingerprint(&block.code_block.ast_representation);
-
-                        let mut fingerprints_lock = fingerprints.lock().unwrap();
-                        if let Some(existing_blocks) = fingerprints_lock.get(&fingerprint) {
-                            if existing_blocks.iter().any(|b|
-                                b.start_line_number == block.code_block.start_line &&
-                                    b.end_line_number == block.code_block.end_line &&
-                                    b.source_file == file_path
-                            ) {
-                                return None;
-                            }
-                        }
-
                         let duplicate_block = DuplicateBlock {
                             start_line_number: block.code_block.start_line,
                             end_line_number: block.code_block.end_line,
                             source_file: file_path.clone(),
                         };
-
                         let parent_fingerprint = block.parent.as_ref().and_then(|parent_weak| {
                             parent_weak.upgrade().map(|parent_ref| {
                                 let parent = parent_ref.borrow();
@@ -69,38 +54,39 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
                                 }
                             })
                         });
-
                         Some((fingerprint, parent_fingerprint, duplicate_block))
-                    })
-                    .collect();
-
-                {
-                    let mut fingerprints_lock = fingerprints.lock().unwrap();
-                    let mut parent_fingerprints_lock = parent_fingerprints.lock().unwrap();
-                    for (fingerprint, parent_fingerprint, duplicate_block) in processed_blocks {
-                        fingerprints_lock.entry(fingerprint.clone()).or_default().push(duplicate_block);
-                        if let Some(parent) = parent_fingerprint {
-                            parent_fingerprints_lock.insert(fingerprint, parent);
-                        }
-                    }
+                    }).collect::<Vec<_>>());
+                    pb.inc(1);
+                    result
+                } else {
+                    pb.inc(1);
+                    None
                 }
+            })
+            .flatten()
+            .collect();
+
+        // Ensure that writing to fingerprints and parent_fingerprints is synchronized
+        for (fingerprint, parent_fingerprint, duplicate_block) in processed_blocks {
+            fingerprints.entry(fingerprint.clone()).and_modify(|existing_blocks| {
+                existing_blocks.push(duplicate_block.clone());
+            }).or_insert_with(|| vec![duplicate_block.clone()]);
+
+            if let Some(parent) = parent_fingerprint {
+                parent_fingerprints.entry(fingerprint.clone()).or_insert(parent);
             }
-            pb.inc(1);
-        });
+        }
     });
 
     pb.finish_with_message(format!("Processing complete in {:.2} seconds", pb.elapsed().as_secs_f64()));
 
-    let exceeding_threshold_fingerprints: BTreeSet<String> = {
-        let fingerprints_lock = fingerprints.lock().unwrap();
-        fingerprints_lock.iter()
-            .filter(|(_, blocks)| blocks.len() > 1 && (blocks[0].end_line_number - blocks[0].start_line_number + 1) >= args.threshold)
-            .map(|(fingerprint, _)| fingerprint.clone())
-            .collect()
-    };
+    let exceeding_threshold_fingerprints: BTreeSet<String> = fingerprints.iter()
+        .filter(|entry| entry.value().len() > 1 && (entry.value()[0].end_line_number - entry.value()[0].start_line_number + 1) >= args.threshold)
+        .map(|entry| entry.key().clone())
+        .collect();
 
     let debug_data = DebugData {
-        parent_fingerprints: parent_fingerprints.lock().unwrap().clone(),
+        parent_fingerprints: parent_fingerprints.iter().map(|entry| (entry.key().clone(), entry.value().clone())).collect(),
         exceeding_threshold_fingerprints: exceeding_threshold_fingerprints.clone(),
     };
 
@@ -111,51 +97,58 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Hash
         }
     }
 
-    let (duplicate_blocks, duplicate_lines, duplicate_file_set): (usize, usize, BTreeSet<String>) = fingerprints
-        .lock().unwrap()
-        .iter()
-        .filter(|(fingerprint, blocks)| {
-            blocks.len() > 1
-                && (blocks[0].end_line_number - blocks[0].start_line_number + 1) >= args.threshold
-                && parent_fingerprints.lock().unwrap().get(&**fingerprint)
-                .map_or(true, |pf| !exceeding_threshold_fingerprints.contains(&pf.fingerprint))
-        })
-        .map(|(_, blocks)| {
-            let line_count: usize = blocks.iter().map(|b| b.end_line_number - b.start_line_number + 1).sum();
-            let files: BTreeSet<String> = blocks.iter().map(|b| b.source_file.clone()).collect();
-            (blocks.len(), line_count, files)
-        })
-        .fold((0, 0, BTreeSet::new()), |(acc_blocks, acc_lines, mut acc_files), (b, l, f)| {
-            acc_files.extend(f);
-            (acc_blocks + b, acc_lines + l, acc_files)
-        });
-
+    fn filter_and_collect_fingerprints(
+        fingerprints: &DashMap<String, Vec<DuplicateBlock>>,
+        parent_fingerprints: &DashMap<String, ParentFingerprint>,
+        exceeding_threshold_fingerprints: &BTreeSet<String>,
+        threshold: usize,
+    ) -> (usize, usize, BTreeSet<String>, Vec<DuplicateReport>) {
+        let (duplicate_blocks, duplicate_lines, duplicate_file_set, details): (usize, usize, BTreeSet<String>, Vec<DuplicateReport>) = fingerprints
+            .iter()
+            .filter(|entry| {
+                let blocks = entry.value();
+                blocks.len() > 1
+                    && (blocks[0].end_line_number - blocks[0].start_line_number + 1) >= threshold
+                    && parent_fingerprints.get(entry.key())
+                    .map_or(true, |pf| !exceeding_threshold_fingerprints.contains(&pf.fingerprint))
+            })
+            .map(|entry| {
+                let blocks = entry.value();
+                let line_count: usize = blocks.iter().map(|b| b.end_line_number - b.start_line_number + 1).sum();
+                let files: BTreeSet<String> = blocks.iter().map(|b| b.source_file.clone()).collect();
+                let report = DuplicateReport {
+                    fingerprint: entry.key().clone(),
+                    line_count: blocks[0].end_line_number - blocks[0].start_line_number + 1,
+                    blocks: blocks.clone(),
+                };
+                (blocks.len(), line_count, files, report)
+            })
+            .fold((0, 0, BTreeSet::new(), Vec::new()), |(acc_blocks, acc_lines, mut acc_files, mut acc_details), (b, l, f, r)| {
+                acc_files.extend(f);
+                acc_details.push(r);
+                (acc_blocks + b, acc_lines + l, acc_files, acc_details)
+            });
+    
+        (duplicate_blocks, duplicate_lines, duplicate_file_set, details)
+    }
+    
+    let (duplicate_blocks, duplicate_lines, duplicate_file_set, details) = filter_and_collect_fingerprints(
+        &fingerprints,
+        &parent_fingerprints,
+        &exceeding_threshold_fingerprints,
+        args.threshold,
+    );
+    
     let summary = serde_json::json!({
         "duplicateBlocks": duplicate_blocks,
         "duplicateLines": duplicate_lines,
         "duplicateFiles": duplicate_file_set.len(),
     });
-
-    let details: Vec<DuplicateReport> = fingerprints
-        .lock().unwrap()
-        .iter()
-        .filter(|(fingerprint, blocks)| {
-            blocks.len() > 1
-                && (blocks[0].end_line_number - blocks[0].start_line_number + 1) >= args.threshold
-                && parent_fingerprints.lock().unwrap().get(&**fingerprint)
-                .map_or(true, |pf| !exceeding_threshold_fingerprints.contains(&pf.fingerprint))
-        })
-        .map(|(fingerprint, blocks)| DuplicateReport {
-            fingerprint: fingerprint.clone(),
-            line_count: blocks[0].end_line_number - blocks[0].start_line_number + 1,
-            blocks: blocks.clone(),
-        })
-        .collect();
-
+    
     let mut result = HashMap::new();
     result.insert("summary".to_string(), summary);
     result.insert("records".to_string(), serde_json::to_value(details).unwrap());
-
+    
     result
 }
 
