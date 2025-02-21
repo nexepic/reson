@@ -1,4 +1,4 @@
-<p style="text-align: center;">
+<p align="center">
     <a href="https://nexepic.github.io/reson">
         <picture>
             <source srcset="./docs/_media/icon-light.svg" media="(prefers-color-scheme: dark)">
@@ -7,11 +7,11 @@
     </a>
 </p>
 
-<p style="text-align: center;">
+<p align="center">
   A high-performance code duplication detector based on Abstract Syntax Tree (AST).
 </p>
 
-<p style="text-align: center;">
+<p align="center">
     <a href="https://github.com/nexepic/reson/actions/workflows/ci.yml">
         <img alt="Build Status" src="https://github.com/nexepic/reson/actions/workflows/ci.yml/badge.svg" />
     </a>
