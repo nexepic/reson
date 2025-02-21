@@ -8,7 +8,8 @@
 
 - **AST-based Analysis**: Ensures precise duplication detection by analyzing the code structure rather than plain text.
 - **Flexible Output Options**: Generate detailed reports in JSON and other formats.
-- **Supported Languages**: C, C++, Java, Go, Python, JavaScript, Rust
+- **Supported Languages**: C, C++, Java, Go, Python, JavaScript, Rust.
+- **Open Source**: MIT License.
 
 [GitHub](https://github.com/nexepic/reson.git)
 [Getting Started](#reson)
