@@ -2,13 +2,13 @@
 
 ![logo](_media/icon.svg)
 
-# reson <small>v1.2.1</small>
+# reson <small>v1.2.2</small>
 
 > A high-performance code duplication detector based on Abstract Syntax Tree (AST).
 
 - **AST-based Analysis**: Ensures precise duplication detection by analyzing the code structure rather than plain text.
+- **Blazing Fast Speed**: Detects code duplication with exceptional performance.
 - **Flexible Output Options**: Generate detailed reports in JSON and other formats.
-- **Supported Languages**: C, C++, Java, Go, Python, JavaScript, Rust.
 - **Open Source**: MIT License.
 
 [GitHub](https://github.com/nexepic/reson.git)
