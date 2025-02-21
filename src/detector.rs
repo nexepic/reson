@@ -8,6 +8,7 @@ use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
 use serde_json::Value;
 use std::collections::BTreeSet;
+use reson::POOL_STACK_SIZE;
 
 pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Value {
     let files = filter_files(&args.source_path, &args.languages, &args.excludes, args.max_file_size);
@@ -24,7 +25,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Valu
 
     let pool = ThreadPoolBuilder::new()
         .num_threads(num_threads)
-        .stack_size(100 * 1024 * 1024)
+        .stack_size(POOL_STACK_SIZE)
         .build()
         .unwrap();
 
