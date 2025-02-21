@@ -13,7 +13,7 @@ use tree_sitter_python::language as python_language;
 use tree_sitter_rust::language as rust_language;
 use reson::TREE_PARSING_MAX_DEPTH;
 use crate::parser::ast_node::should_skip_node;
-use crate::parser::ast_collection::collect_ast_content;
+use crate::parser::ast_collection::{collect_ast_content, compute_ast_fingerprint};
 
 pub fn set_parser_language(parser: &mut Parser, language: &str) -> Result<(), String> {
     let language: Language = match language {
@@ -85,16 +85,16 @@ fn traverse_tree(
                     return;
                 }
 
-                let content = source[node.start_byte()..node.end_byte()].to_string();
                 let ast_representation = collect_ast_content(node, source);
+                let fingerprint = compute_ast_fingerprint(&ast_representation);
 
                 let code_block = CodeBlock {
                     start_byte: node.start_byte(),
                     end_byte: node.end_byte(),
                     start_line,
                     end_line,
-                    content,
-                    ast_representation,
+                    // ast_representation,
+                    fingerprint,
                 };
 
                 // Create a new CodeBlockNode

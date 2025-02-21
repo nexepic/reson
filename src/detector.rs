@@ -1,5 +1,4 @@
-use crate::models::detection_types::{DebugData, DuplicateBlock, DuplicateReport, ParentFingerprint};
-use crate::parser::ast_collection::compute_ast_fingerprint;
+use crate::models::detection_types::{DuplicateBlock, DuplicateReport, ParentFingerprint};
 use crate::parser::ast_parser::parse_file;
 use crate::utils::filters::filter_files;
 use dashmap::DashMap;
@@ -9,8 +8,6 @@ use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
 use serde_json::Value;
 use std::collections::BTreeSet;
-use std::fs::File;
-use std::io::Write;
 
 pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Value {
     let files = filter_files(&args.source_path, &args.languages, &args.excludes, args.max_file_size);
@@ -39,7 +36,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Valu
                     let file_path = file.to_string_lossy().to_string();
                     let result = Some(blocks.iter().filter_map(|block_rc| {
                         let block = block_rc.borrow();
-                        let fingerprint = compute_ast_fingerprint(&block.code_block.ast_representation);
+                        let fingerprint = block.code_block.fingerprint.clone();
                         let duplicate_block = DuplicateBlock {
                             start_line_number: block.code_block.start_line,
                             end_line_number: block.code_block.end_line,
@@ -48,10 +45,10 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Valu
                         let parent_fingerprint = block.parent.as_ref().and_then(|parent_weak| {
                             parent_weak.upgrade().map(|parent_ref| {
                                 let parent = parent_ref.borrow();
-                                let parent_fingerprint = compute_ast_fingerprint(&parent.code_block.ast_representation);
+                                let parent_fingerprint = parent.code_block.fingerprint.clone();
                                 ParentFingerprint {
                                     fingerprint: parent_fingerprint,
-                                    content: parent.code_block.content.clone(),
+                                    // content: parent.code_block.content.clone(),
                                 }
                             })
                         });
@@ -86,18 +83,6 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Valu
         .map(|entry| entry.key().clone())
         .collect();
 
-    let debug_data = DebugData {
-        parent_fingerprints: parent_fingerprints.iter().map(|entry| (entry.key().clone(), entry.value().clone())).collect(),
-        exceeding_threshold_fingerprints: exceeding_threshold_fingerprints.clone(),
-    };
-
-    if args.debug {
-        if let Ok(json) = serde_json::to_string_pretty(&debug_data) {
-            let mut file = File::create("debug_data.json").expect("Failed to create file");
-            file.write_all(json.as_bytes()).expect("Failed to write to file");
-        }
-    }
-
     fn filter_and_collect_fingerprints(
         fingerprints: &DashMap<String, Vec<DuplicateBlock>>,
         parent_fingerprints: &DashMap<String, ParentFingerprint>,
@@ -129,17 +114,17 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Valu
                 acc_details.push(r);
                 (acc_blocks + b, acc_lines + l, acc_files, acc_details)
             });
-    
+
         (duplicate_blocks, duplicate_lines, duplicate_file_set, details)
     }
-    
+
     let (duplicate_blocks, duplicate_lines, duplicate_file_set, details) = filter_and_collect_fingerprints(
         &fingerprints,
         &parent_fingerprints,
         &exceeding_threshold_fingerprints,
         args.threshold,
     );
-    
+
     let summary = serde_json::json!({
         "duplicateBlocks": duplicate_blocks,
         "duplicateLines": duplicate_lines,
@@ -150,7 +135,7 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Valu
         "summary": summary,
         "records": serde_json::to_value(details).unwrap()
     });
-    
+
     Value::Object(result.as_object().unwrap().clone())
 }
 
@@ -158,7 +143,6 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Valu
 mod tests {
     use super::*;
     use crate::cli::CliArgs;
-    use std::fs;
     use std::path::{Path, PathBuf};
 
     fn setup_test_environment() -> PathBuf {
@@ -252,7 +236,5 @@ mod tests {
 
         let result = detect_duplicates(&args, 1);
         assert!(!result.get("records").unwrap().as_array().unwrap().is_empty());
-        assert!(Path::new("debug_data.json").exists());
-        fs::remove_file("debug_data.json").unwrap();
     }
 }

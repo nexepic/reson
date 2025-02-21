@@ -8,8 +8,9 @@ pub struct CodeBlock {
     pub end_byte: usize,
     pub start_line: usize,
     pub end_line: usize,
-    pub content: String,
-    pub ast_representation: String,
+    // pub content: String,
+    // pub ast_representation: String,
+    pub fingerprint: String,
 }
 
 #[derive(Debug)]
@@ -26,7 +27,7 @@ impl Ord for CodeBlock {
             .then_with(|| self.end_byte.cmp(&other.end_byte))
             .then_with(|| self.start_line.cmp(&other.start_line))
             .then_with(|| self.end_line.cmp(&other.end_line))
-            .then_with(|| self.content.cmp(&other.content))
+            // .then_with(|| self.content.cmp(&other.content))
     }
 }
 
@@ -42,7 +43,8 @@ impl PartialEq for CodeBlock {
         self.end_byte == other.end_byte &&
         self.start_line == other.start_line &&
         self.end_line == other.end_line &&
-        self.content == other.content
+        // self.content == other.content
+        self.fingerprint == other.fingerprint
     }
 }
 
@@ -58,8 +60,9 @@ mod tests {
             end_byte: 10,
             start_line: 1,
             end_line: 1,
-            content: "int main() { return 0; }".to_string(),
-            ast_representation: "".to_string()
+            // content: "int main() { return 0; }".to_string(),
+            // ast_representation: "".to_string()
+            fingerprint: "".to_string()
         };
 
         let block2 = CodeBlock {
@@ -67,8 +70,9 @@ mod tests {
             end_byte: 20,
             start_line: 2,
             end_line: 2,
-            content: "int a = 10;".to_string(),
-            ast_representation: "".to_string()
+            // content: "int a = 10;".to_string(),
+            // ast_representation: "".to_string()
+            fingerprint: "".to_string()
         };
 
         let block3 = CodeBlock {
@@ -76,8 +80,9 @@ mod tests {
             end_byte: 30,
             start_line: 3,
             end_line: 3,
-            content: "return a;".to_string(),
-            ast_representation: "".to_string()
+            // content: "return a;".to_string(),
+            // ast_representation: "".to_string()
+            fingerprint: "".to_string()
         };
 
         let mut blocks = BTreeSet::new();
@@ -98,8 +103,9 @@ mod tests {
             end_byte: 10,
             start_line: 1,
             end_line: 1,
-            content: "int main() { return 0; }".to_string(),
-            ast_representation: "".to_string()
+            // content: "int main() { return 0; }".to_string(),
+            // ast_representation: "".to_string()
+            fingerprint: "".to_string()
         };
 
         let block2 = CodeBlock {
@@ -107,8 +113,9 @@ mod tests {
             end_byte: 10,
             start_line: 1,
             end_line: 1,
-            content: "int main() { return 0; }".to_string(),
-            ast_representation: "".to_string()
+            // content: "int main() { return 0; }".to_string(),
+            // ast_representation: "".to_string()
+            fingerprint: "".to_string()
         };
 
         assert_eq!(block1, block2);
@@ -121,8 +128,9 @@ mod tests {
             end_byte: 10,
             start_line: 1,
             end_line: 1,
-            content: "int main() { return 0; }".to_string(),
-            ast_representation: "".to_string()
+            // content: "int main() { return 0; }".to_string(),
+            // ast_representation: "".to_string()
+            fingerprint: "a".to_string()
         };
 
         let block2 = CodeBlock {
@@ -130,8 +138,9 @@ mod tests {
             end_byte: 10,
             start_line: 1,
             end_line: 1,
-            content: "int main() { return 1; }".to_string(),
-            ast_representation: "".to_string()
+            // content: "int main() { return 1; }".to_string(),
+            // ast_representation: "".to_string()
+            fingerprint: "b".to_string()
         };
 
         assert_ne!(block1, block2);
@@ -144,8 +153,9 @@ mod tests {
             end_byte: 10,
             start_line: 1,
             end_line: 1,
-            content: "int main() { return 0; }".to_string(),
-            ast_representation: "".to_string()
+            // content: "int main() { return 0; }".to_string(),
+            // ast_representation: "".to_string()
+            fingerprint: "".to_string()
         };
 
         let block2 = CodeBlock {
@@ -153,8 +163,9 @@ mod tests {
             end_byte: 20,
             start_line: 2,
             end_line: 2,
-            content: "int a = 10;".to_string(),
-            ast_representation: "".to_string()
+            // content: "int a = 10;".to_string(),
+            // ast_representation: "".to_string()
+            fingerprint: "".to_string()
         };
 
         assert!(block1 < block2);
