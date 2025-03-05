@@ -86,8 +86,13 @@ fn traverse_tree(
                 }
 
                 let ast_representation = collect_ast_content(node, source);
-                let fingerprint = compute_ast_fingerprint(&ast_representation);
-
+                let fingerprint = if ast_representation.is_empty() {
+                    log::debug!("No AST representation found for node at lines {}-{}", start_line, end_line);
+                    "blank_ast".to_string()
+                } else {
+                    compute_ast_fingerprint(&ast_representation)
+                };
+                
                 let code_block = CodeBlock {
                     start_byte: node.start_byte(),
                     end_byte: node.end_byte(),
@@ -176,11 +181,11 @@ mod tests {
     fn test_parse_c_file() {
         let content = r#"
         #include <stdio.h>
-    
+
         void print_hello() {
             printf("Hello, World!\n");
         }
-    
+
         int main() {
             print_hello();
             return 0;
@@ -211,11 +216,11 @@ mod tests {
     fn test_parse_cpp_file() {
         let content = r#"
         #include <iostream>
-    
+
         void print_hello() {
             std::cout << "Hello, World!" << std::endl;
         }
-    
+
         int main() {
             print_hello();
             return 0;
@@ -248,10 +253,10 @@ mod tests {
         public class Main {
             public static void main(String[] args) {
                 System.out.println("Hello, World!");
-    
+
                 print_hello();
             }
-    
+
             public static void print_hello() {
                 System.out.println("Hello, World!");
             }
@@ -283,10 +288,10 @@ mod tests {
         let content = r#"
         def print_hello():
             print("Hello, World!")
-    
+
         def main():
             print_hello()
-    
+
         if __name__ == "__main__":
             main()
         "#;

@@ -38,6 +38,9 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Valu
                     let result = Some(blocks.iter().filter_map(|block_rc| {
                         let block = block_rc.borrow();
                         let fingerprint = block.code_block.fingerprint.clone();
+                        if fingerprint == "blank_ast" {
+                            return None;
+                        }
                         let duplicate_block = DuplicateBlock {
                             start_line_number: block.code_block.start_line,
                             end_line_number: block.code_block.end_line,
