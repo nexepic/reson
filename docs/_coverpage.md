@@ -2,7 +2,7 @@
 
 ![logo](_media/icon.svg)
 
-# reson <small>v1.3.1</small>
+# reson <small>v1.3.2</small>
 
 > A high-performance code duplication detector based on Abstract Syntax Tree (AST).
 

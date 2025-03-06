@@ -31,42 +31,42 @@ pub fn detect_duplicates(args: &crate::cli::CliArgs, num_threads: usize) -> Valu
 
     pool.install(|| {
         let processed_blocks: Vec<(String, Option<ParentFingerprint>, DuplicateBlock)> = files.par_iter()
-            .filter_map(|file| {
-                pb.set_message(file.to_string_lossy().to_string());
-                if let Ok((blocks, _tree, _source_code)) = parse_file(file, args.threshold) {
-                    let file_path = file.to_string_lossy().to_string();
-                    let result = Some(blocks.iter().filter_map(|block_rc| {
-                        let block = block_rc.borrow();
-                        let fingerprint = block.code_block.fingerprint.clone();
-                        if fingerprint == "blank_ast" {
-                            return None;
-                        }
-                        let duplicate_block = DuplicateBlock {
-                            start_line_number: block.code_block.start_line,
-                            end_line_number: block.code_block.end_line,
-                            source_file: file_path.clone(),
-                        };
-                        let parent_fingerprint = block.parent.as_ref().and_then(|parent_weak| {
-                            parent_weak.upgrade().map(|parent_ref| {
-                                let parent = parent_ref.borrow();
-                                let parent_fingerprint = parent.code_block.fingerprint.clone();
-                                ParentFingerprint {
-                                    fingerprint: parent_fingerprint,
-                                    // content: parent.code_block.content.clone(),
-                                }
-                            })
-                        });
-                        Some((fingerprint, parent_fingerprint, duplicate_block))
-                    }).collect::<Vec<_>>());
-                    pb.inc(1);
-                    result
-                } else {
-                    pb.inc(1);
-                    None
-                }
-            })
-            .flatten()
-            .collect();
+                .filter_map(|file| {
+                    pb.set_message(file.to_string_lossy().to_string());
+                    if let Ok((blocks, _tree, _source_code)) = parse_file(file, args.threshold) {
+                        let file_path = file.to_string_lossy().to_string();
+                        let result = Some(blocks.iter().filter_map(|block_rc| {
+                            let block = block_rc.borrow();
+                            let fingerprint = block.code_block.fingerprint.clone();
+                            // Skip blank ASTs and small blocks
+                            if fingerprint == "blank_ast" || block.code_block.ast_lines < 10 {
+                                return None;
+                            }
+                            let duplicate_block = DuplicateBlock {
+                                start_line_number: block.code_block.start_line,
+                                end_line_number: block.code_block.end_line,
+                                source_file: file_path.clone(),
+                            };
+                            let parent_fingerprint = block.parent.as_ref().and_then(|parent_weak| {
+                                parent_weak.upgrade().map(|parent_ref| {
+                                    let parent = parent_ref.borrow();
+                                    let parent_fingerprint = parent.code_block.fingerprint.clone();
+                                    ParentFingerprint {
+                                        fingerprint: parent_fingerprint,
+                                    }
+                                })
+                            });
+                            Some((fingerprint, parent_fingerprint, duplicate_block))
+                        }).collect::<Vec<_>>());
+                        pb.inc(1);
+                        result
+                    } else {
+                        pb.inc(1);
+                        None
+                    }
+                })
+                .flatten()
+                .collect();
 
         // Ensure that writing to fingerprints and parent_fingerprints is synchronized
         for (fingerprint, parent_fingerprint, duplicate_block) in processed_blocks {
