@@ -79,30 +79,29 @@ fn traverse_tree(
             let line_count = end_line - start_line + 1;
 
             if line_count >= threshold {
-                // Skip analyzing child nodes if the current node should be skipped
                 if should_skip_node(&node, source) {
                     log::debug!("Skipping node at lines {}-{}", start_line, end_line);
                     return;
                 }
 
-                let ast_representation = collect_ast_content(node, source);
+                let (ast_representation, ast_lines) = collect_ast_content(node, source);
                 let fingerprint = if ast_representation.is_empty() {
                     log::debug!("No AST representation found for node at lines {}-{}", start_line, end_line);
                     "blank_ast".to_string()
                 } else {
+                    log::debug!("Computing fingerprint for node at lines {}-{}, AST lines: {}", start_line, end_line, ast_lines);
                     compute_ast_fingerprint(&ast_representation)
                 };
-                
+
                 let code_block = CodeBlock {
                     start_byte: node.start_byte(),
                     end_byte: node.end_byte(),
                     start_line,
                     end_line,
-                    // ast_representation,
                     fingerprint,
+                    ast_lines,
                 };
 
-                // Create a new CodeBlockNode
                 let node_ref = Rc::new(RefCell::new(CodeBlockNode {
                     code_block,
                     parent: parent.clone(),
@@ -110,7 +109,6 @@ fn traverse_tree(
 
                 code_blocks.push(node_ref.clone());
 
-                // Recursively traverse child nodes, passing the current node as the parent
                 if cursor.goto_first_child() {
                     traverse_tree(cursor, source, code_blocks, threshold, depth + 1, max_depth, Some(Rc::downgrade(&node_ref)));
                     cursor.goto_parent();
