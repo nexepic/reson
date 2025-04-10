@@ -5,7 +5,8 @@ pub fn get_language_mapping() -> HashMap<&'static str, Vec<&'static str>> {
     mapping.insert("c", vec!["c", "h"]);
     mapping.insert("cpp", vec!["cpp", "cc", "cxx", "hpp", "hxx"]);
     mapping.insert("java", vec!["java"]);
-    mapping.insert("javascript", vec!["js"]);
+    mapping.insert("javascript", vec!["js", "jsx"]);
+    mapping.insert("typescript", vec!["ts", "tsx"]);
     mapping.insert("python", vec!["py"]);
     mapping.insert("golang", vec!["go"]);
     mapping.insert("rust", vec!["rs"]);
@@ -32,7 +33,8 @@ mod tests {
         assert_eq!(mapping.get("c"), Some(&vec!["c", "h"]));
         assert_eq!(mapping.get("cpp"), Some(&vec!["cpp", "cc", "cxx", "hpp", "hxx"]));
         assert_eq!(mapping.get("java"), Some(&vec!["java"]));
-        assert_eq!(mapping.get("javascript"), Some(&vec!["js"]));
+        assert_eq!(mapping.get("javascript"), Some(&vec!["js", "jsx"]));
+        assert_eq!(mapping.get("typescript"), Some(&vec!["ts", "tsx"]));
         assert_eq!(mapping.get("python"), Some(&vec!["py"]));
         assert_eq!(mapping.get("golang"), Some(&vec!["go"]));
         assert_eq!(mapping.get("rust"), Some(&vec!["rs"]));
@@ -49,6 +51,9 @@ mod tests {
         assert_eq!(get_language_from_extension("hxx"), Some("cpp"));
         assert_eq!(get_language_from_extension("java"), Some("java"));
         assert_eq!(get_language_from_extension("js"), Some("javascript"));
+        assert_eq!(get_language_from_extension("jsx"), Some("javascript"));
+        assert_eq!(get_language_from_extension("ts"), Some("typescript"));
+        assert_eq!(get_language_from_extension("tsx"), Some("typescript"));
         assert_eq!(get_language_from_extension("py"), Some("python"));
         assert_eq!(get_language_from_extension("go"), Some("golang"));
         assert_eq!(get_language_from_extension("rs"), Some("rust"));

@@ -198,6 +198,40 @@ mod tests {
     }
     
     #[test]
+    fn test_collect_ast_content_with_comments_typescript() {
+        let content = r#"
+        /*
+        This is a comment
+        */
+        function main(): void {
+            // This is a comment
+            let a: number = 0;
+            /*
+            Another comment
+            */
+            return 0; // Another comment
+        }
+        "#;
+        let content_without_comments = r#"
+        function main(): void {
+            let a: number = 0;
+            return 0;
+        }
+        "#;
+        let mut parser = Parser::new();
+        let tree_sitter_language = tree_sitter_typescript::language_typescript();
+        parser.set_language(tree_sitter_language).expect("Failed to set language");
+        let parsed_tree = parser.parse(content, None).expect("Failed to parse content");
+        let parsed_tree_without_comments = parser.parse(content_without_comments, None).expect("Failed to parse content without comments");
+
+        let (ast_representation, _ast_lines) = collect_ast_content(parsed_tree.root_node(), content);
+        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(parsed_tree_without_comments.root_node(), content_without_comments);
+        
+        assert!(!ast_representation.contains("comment"));
+        assert_eq!(ast_representation, ast_representation_without_comments);
+    }
+    
+    #[test]
     fn test_collect_ast_content_with_comments_python() {
         let content = r#"
         def main():

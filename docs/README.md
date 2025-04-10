@@ -30,6 +30,7 @@ This tool helps maintain high-quality codebases by identifying redundant code bl
 | Go           |
 | Python       |
 | JavaScript   |
+| TypeScript   |
 | Rust         |
 
 ---

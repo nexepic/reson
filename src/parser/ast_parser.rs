@@ -9,6 +9,7 @@ use tree_sitter_cpp::language as cpp_language;
 use tree_sitter_go::language as go_language;
 use tree_sitter_java::language as java_language;
 use tree_sitter_javascript::language as javascript_language;
+use tree_sitter_typescript::language_typescript as typescript_language;
 use tree_sitter_python::language as python_language;
 use tree_sitter_rust::language as rust_language;
 use reson::TREE_PARSING_MAX_DEPTH;
@@ -21,6 +22,7 @@ pub fn set_parser_language(parser: &mut Parser, language: &str) -> Result<(), St
         "cpp" => cpp_language(),
         "java" => java_language(),
         "javascript" => javascript_language(),
+        "typescript" => typescript_language(),
         "python" => python_language(),
         "golang" => go_language(),
         "rust" => rust_language(),
@@ -140,6 +142,7 @@ mod tests {
             assert!(set_parser_language(&mut parser, "cpp").is_ok());
             assert!(set_parser_language(&mut parser, "java").is_ok());
             assert!(set_parser_language(&mut parser, "javascript").is_ok());
+            assert!(set_parser_language(&mut parser, "typescript").is_ok());
             assert!(set_parser_language(&mut parser, "python").is_ok());
             assert!(set_parser_language(&mut parser, "golang").is_ok());
             assert!(set_parser_language(&mut parser, "rust").is_ok());

@@ -34,7 +34,7 @@ pub struct CliArgs {
 impl CliArgs {
     pub fn command() -> Command {
         Command::new("reson")
-            .version("v1.3.2")
+            .version("v1.3.3")
             .author("Nexepic")
             .about("Detects code duplication across multiple files")
             .arg(
