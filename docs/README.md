@@ -22,16 +22,16 @@ This tool helps maintain high-quality codebases by identifying redundant code bl
 
 ## Supported Languages
 
-| Language     |
-|--------------|
-| C            |
-| C++          |
-| Java         |
-| Go           |
-| Python       |
-| JavaScript   |
-| TypeScript   |
-| Rust         |
+| Language   | File Extensions                       |
+|------------|---------------------------------------|
+| C          | `.c`, `.h`                            |
+| C++        | `.cpp`, `.cc`, `.cxx`, `.hpp`, `.hxx` |
+| Java       | `.java`                               |
+| JavaScript | `.js`, `.jsx`                         |
+| TypeScript | `.ts`, `.tsx`                         |
+| Python     | `.py`                                 |
+| Go         | `.go`                                 |
+| Rust       | `.rs`                                 |
 
 ---
 
