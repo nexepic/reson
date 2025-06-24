@@ -17,7 +17,7 @@ To customize the detection process, you can use the following options:
 | `--languages`     | c,cpp,java,javascript,typescript,python,golang,rust | c,cpp,java,javascript,typescript,python,golang,rust | Comma-separated list of languages to detect                           |
 | `--excludes`      | N/A                                                 | Any valid path                                      | Comma-separated list of directories to exclude from the detection     |
 | `--threshold`     | 5                                                   | Any positive integer                                | Minimum number of lines for a code block to be considered a duplicate |
-| `--output-format` | json                                                | text,json                                           | Format of the output report                                           |
+| `--output-format` | json                                                | xml,json                                            | Format of the output report                                           |
 | `--output-file`   | N/A                                                 | Any valid file name                                 | Name of the output file                                               |
 | `--max-file-size` | 1048576                                             | Any positive integer                                | Maximum file size to process in bytes                                 |
 | `--threads`       | 10                                                  | Any positive integer                                | Number of threads to use for processing                               |
