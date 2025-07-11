@@ -11,32 +11,6 @@ import styles from './index.module.css';
 function HomepageHeader() {
   const { siteConfig } = useDocusaurusContext();
   const { colorMode } = useColorMode();
-  const [footerHeight, setFooterHeight] = useState(0);
-
-  useEffect(() => {
-    const updateFooterHeight = () => {
-      const footer = document.querySelector('footer');
-      if (footer) {
-        setFooterHeight(footer.offsetHeight);
-      }
-    };
-
-    // Initial calculation
-    updateFooterHeight();
-
-    // Recalculate on window resize
-    window.addEventListener('resize', updateFooterHeight);
-    
-    // Use MutationObserver to detect footer changes
-    const observer = new MutationObserver(updateFooterHeight);
-    const targetNode = document.body;
-    observer.observe(targetNode, { childList: true, subtree: true });
-
-    return () => {
-      window.removeEventListener('resize', updateFooterHeight);
-      observer.disconnect();
-    };
-  }, []);
 
   // Theme-based configurations
   const themeConfig = {
@@ -59,7 +33,7 @@ function HomepageHeader() {
       display: 'flex', 
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: `calc(100vh - var(--ifm-navbar-height) - ${footerHeight}px)`,
+      minHeight: `calc(100vh - var(--ifm-navbar-height) - var(--footer-height))`,
       width: '100%',
       background: currentTheme.gradient,
       position: 'relative',
@@ -89,15 +63,6 @@ function HomepageHeader() {
           <Heading as="h1" style={{ margin: 0, textAlign: 'center' }}>
             {siteConfig.title}
           </Heading>
-          {/* <small style={{ 
-            fontSize: '0.8em', 
-            fontWeight: 'normal',
-            marginLeft: '0.3em',
-            verticalAlign: 'sub',
-            opacity: 0.7
-          }}>
-            v1.3.3
-          </small> */}
         </div>
 
         {/* Tagline from siteConfig */}
