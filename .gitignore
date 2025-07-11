@@ -1,3 +1,10 @@
 /target
 .idea
 cobertura.xml
+.DS_Store
+docs/node_modules
+versions.json
+versioned_docs
+versioned_sidebars
+yarn-error.log
+.docusaurus

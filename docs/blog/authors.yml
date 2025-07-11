@@ -1,0 +1,9 @@
+nexepic:
+  name: Nexepic
+  title: Technology Solutions
+  url: https://github.com/Nexepic
+  image_url: https://github.com/nexepic.png
+  page: true
+  socials:
+    github: nexepic
+

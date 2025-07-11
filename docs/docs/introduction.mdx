@@ -1,38 +1,18 @@
-<p align="center">
-    <a href="https://nexepic.github.io/reson">
-        <picture>
-            <source srcset="./docs/_media/icon-light.svg" media="(prefers-color-scheme: dark)">
-            <img src="./docs/_media/icon.svg" alt="icon" />
-        </picture>
-    </a>
-</p>
-
-<p align="center">
-  A high-performance code duplication detector based on Abstract Syntax Tree (AST).
-</p>
-
-<p align="center">
-    <a href="https://github.com/nexepic/reson/actions/workflows/ci.yml">
-        <img alt="Build Status" src="https://github.com/nexepic/reson/actions/workflows/ci.yml/badge.svg" />
-    </a>
-    <a href="https://codecov.io/gh/nexepic/reson">
-        <img alt="codecov" src="https://codecov.io/gh/nexepic/reson/branch/main/graph/badge.svg" />
-    </a>
-    <a>
-        <img alt="License" src="https://img.shields.io/github/license/nexepic/reson">
-    </a>
-    <a>
-        <img alt="GitHub release" src="https://img.shields.io/github/v/release/nexepic/reson">
-    </a>
-</p>
-
-Reson is a robust command-line tool designed for detecting code duplication across multiple source files. By leveraging Abstract Syntax Tree (AST) analysis, reson ensures accurate and reliable detection of duplicated code, supporting various programming languages such as C/C++, Java, and Python.
-
-This tool helps maintain high-quality codebases by identifying redundant code blocks, enabling effective refactoring and optimization.
-
+---
+sidebar_position: 1
 ---
 
-## Features
+# Introduction
+
+[![Build Status](https://github.com/nexepic/reson/actions/workflows/ci.yml/badge.svg)](https://github.com/nexepic/reson/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/nexepic/reson/branch/main/graph/badge.svg)](https://codecov.io/gh/nexepic/reson)
+![License](https://img.shields.io/github/license/nexepic/reson)
+
+<details open>
+
+<summary>
+**Reson** - A high-performance tool designed for detecting code duplication across multiple source files. By leveraging Abstract Syntax Tree (AST) analysis, reson ensures accurate and reliable detection of duplicated code, supporting various programming languages.
+</summary>
 
 - **AST-based Analysis**: Ensures precise duplication detection by analyzing the code structure rather than plain text.
 - **Customizable Thresholds**: Define the minimum number of lines to consider as duplicates.
@@ -40,7 +20,9 @@ This tool helps maintain high-quality codebases by identifying redundant code bl
 - **Flexible Output Options**: Generate detailed reports in JSON and other formats.
 - **Debug Mode**: Access additional logs for debugging and deeper analysis.
 
----
+</details>
+
+> This tool helps maintain high-quality codebases by identifying redundant code blocks, enabling effective refactoring and optimization.
 
 ## Supported Languages
 
@@ -55,8 +37,6 @@ This tool helps maintain high-quality codebases by identifying redundant code bl
 | Go         | `.go`                                 |
 | Rust       | `.rs`                                 |
 
----
-
 ## Build from Source
 
 Clone the repository and build the project using Rust's Cargo:
@@ -67,8 +47,6 @@ cd reson
 cargo build --release
 ```
 
----
-
 ## Usage
 
 Run the tool using the following command:
@@ -76,8 +54,6 @@ Run the tool using the following command:
 ```bash
 ./reson --source-path <path_to_source> [options]
 ```
-
----
 
 ## Example
 
@@ -91,8 +67,6 @@ Detect code duplication in the src directory, excluding tests and build director
   --output-file result.json \
   --threshold 10
 ```
-
----
 
 ## Development
 
@@ -108,14 +82,10 @@ cargo test
 
 We welcome contributions to enhance reson. Feel free to open an issue or submit a pull request.
 
----
-
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
 
----
-
 ## Acknowledgements
 
-Reson was created by Nexepic to streamline the process of detecting and managing code duplication in diverse codebases. Your feedback and contributions are highly valued!
+reson was created by Nexepic to streamline the process of detecting and managing code duplication in diverse codebases. Your feedback and contributions are highly valued!

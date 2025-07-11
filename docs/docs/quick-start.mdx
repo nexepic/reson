@@ -1,0 +1,60 @@
+---
+sidebar_position: 2
+---
+
+# Quick start
+
+To perform a quick detection for your project:
+
+```shell
+./reson --source-path <path_to_source>
+```
+
+## More options
+
+To customize the detection process, you can use the following options:
+
+### `--source-path`
+- **Description**: Path to the source code directory
+- **Default**: N/A (required)
+- **Example**: `./reson --source-path /path/to/your/code`
+
+### `--languages`
+- **Description**: Comma-separated list of languages to detect
+- **Default**: `c,cpp,java,javascript,typescript,python,golang,rust`
+- **Available languages**: c, cpp, java, javascript, typescript, python, golang, rust
+- **Example**: `./reson --source-path /path --languages java,python`
+
+### `--excludes`
+- **Description**: Comma-separated list of directories to exclude from detection
+- **Default**: None
+- **Example**: `./reson --source-path /path --excludes node_modules,target`
+
+### `--threshold`
+- **Description**: Minimum number of lines for a code block to be considered a duplicate
+- **Default**: `5`
+- **Type**: Positive integer
+- **Example**: `./reson --source-path /path --threshold 10`
+
+### `--output-format`
+- **Description**: Format of the output report
+- **Default**: `json`
+- **Options**: `xml`, `json`
+- **Example**: `./reson --source-path /path --output-format xml`
+
+### `--output-file`
+- **Description**: Name of the output file
+- **Default**: N/A (outputs to console if not specified)
+- **Example**: `./reson --source-path /path --output-file report.json`
+
+### `--max-file-size`
+- **Description**: Maximum file size to process in bytes
+- **Default**: `1048576` (1MB)
+- **Type**: Positive integer
+- **Example**: `./reson --source-path /path --max-file-size 2097152`
+
+### `--threads`
+- **Description**: Number of threads to use for processing
+- **Default**: `10`
+- **Type**: Positive integer
+- **Example**: `./reson --source-path /path --threads 4`
