@@ -15,10 +15,10 @@ const config: Config = {
   // },
 
   // Set the production url of your site here
-  url: 'https://your-docusaurus-site.example.com',
+  url: 'https://nexepic.github.io/reson',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/',
+  baseUrl: '/reson/',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
