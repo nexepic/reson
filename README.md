@@ -2,7 +2,7 @@
     <a href="https://nexepic.github.io/reson">
         <picture>
             <source srcset="./docs/static/img/icon-light.svg" media="(prefers-color-scheme: dark)">
-            <img src="./docs/static/img/icon.svg" alt="icon" width="80" />
+            <img src="./docs/static/img/icon.svg" alt="icon" width="120" />
         </picture>
     </a>
 </p>
