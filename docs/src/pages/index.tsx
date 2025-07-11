@@ -138,11 +138,10 @@ function HomepageHeader() {
         </ul>
 
         {/* Buttons */}
-        <div style={{ marginTop: '2rem' }}>
+        <div className={styles.buttons}>
           <a
             className="button button--primary button--lg"
             href="https://github.com/nexepic/reson.git"
-            style={{ marginRight: '1rem' }}
           >
             Community
           </a>
