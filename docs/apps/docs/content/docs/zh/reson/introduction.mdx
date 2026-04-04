@@ -1,0 +1,59 @@
+---
+title: 简介
+description: Reson 是一个基于 AST 的高性能多语言代码重复检测工具。
+category: 快速开始
+order: 1
+project: reson
+projectLabel: Reson
+projectDescription: 基于 AST 的高性能代码重复检测工具。
+projectOrder: 1
+---
+
+**Reson** 是一个命令行工具，通过分析抽象语法树（AST）而不是纯文本来检测代码重复。
+
+## 核心能力
+
+- **AST 结构分析**：基于语法结构进行比较，减少误报。
+- **可调阈值**：同时支持最小重复行数与最小 AST 节点数过滤。
+- **路径排除**：可忽略生成目录或无关目录。
+- **多种输出**：支持 JSON / XML 报告。
+- **调试友好**：可用于排查解析与检测行为。
+
+## 支持语言
+
+| 语言 | 文件后缀 |
+|---|---|
+| C | `.c`, `.h` |
+| C++ | `.cpp`, `.cc`, `.cxx`, `.hpp`, `.hxx` |
+| Java | `.java` |
+| JavaScript | `.js`, `.jsx` |
+| TypeScript | `.ts`, `.tsx` |
+| Python | `.py` |
+| Go | `.go` |
+| Rust | `.rs` |
+
+## 从源码构建
+
+```bash
+git clone https://github.com/nexepic/reson.git
+cd reson
+cargo build --release
+```
+
+## 基本用法
+
+```bash
+./reson --source-path <path_to_source> [options]
+```
+
+## 示例
+
+```bash
+./reson \
+  --source-path src \
+  --excludes tests,build \
+  --output-format json \
+  --output-file result.json \
+  --threshold 10 \
+  --min-ast-nodes 12
+```
