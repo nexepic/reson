@@ -16,6 +16,11 @@ export function getSiteUrl(): string {
 
   try {
     const url = new URL(raw)
+    // If NEXT_PUBLIC_SITE_URL includes a path, use it as-is
+    // Otherwise, fall back to just the origin
+    if (url.pathname && url.pathname !== '/') {
+      return raw.replace(/\/$/, '')
+    }
     return url.origin
   } catch {
     return 'https://nexdoc.dev'
