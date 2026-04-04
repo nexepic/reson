@@ -6,13 +6,26 @@ pub struct CliArgs {
     #[clap(short = 's', long = "source-path", value_parser(clap::value_parser!(PathBuf)))]
     pub source_path: PathBuf,
 
-    #[clap(short = 'l', long = "languages", value_parser(clap::builder::ValueParser::string()))]
+    #[clap(
+        short = 'l',
+        long = "languages",
+        value_parser(clap::builder::ValueParser::string())
+    )]
     pub languages: Vec<String>,
 
-    #[clap(short = 'e', long = "excludes", value_parser(clap::builder::ValueParser::string()))]
+    #[clap(
+        short = 'e',
+        long = "excludes",
+        value_parser(clap::builder::ValueParser::string())
+    )]
     pub excludes: Vec<String>,
 
-    #[clap(short = 'o', long = "output-format", default_value = "json", value_parser(clap::builder::ValueParser::string()))]
+    #[clap(
+        short = 'o',
+        long = "output-format",
+        default_value = "json",
+        value_parser(clap::builder::ValueParser::string())
+    )]
     pub output_format: String,
 
     #[clap(short = 'f', long = "output-file", default_value = "duplications", value_parser(clap::value_parser!(PathBuf)))]
@@ -21,10 +34,14 @@ pub struct CliArgs {
     #[clap(short = 't', long = "threshold", default_value = "5", value_parser(clap::value_parser!(usize)))]
     pub threshold: usize,
 
+    #[clap(long = "min-ast-nodes", default_value = "10", value_parser(clap::value_parser!(usize)))]
+    pub min_ast_nodes: usize,
+
     #[clap(short = 'n', long = "threads", default_value = "10", value_parser(clap::value_parser!(usize)))]
     pub threads: usize,
 
-    #[clap(long = "max-file-size", value_parser(clap::value_parser!(u64)), default_value = "1048576")] // 1 MB default
+    #[clap(long = "max-file-size", value_parser(clap::value_parser!(u64)), default_value = "1048576")]
+    // 1 MB default
     pub max_file_size: u64,
 
     #[clap(long = "debug")]
@@ -101,6 +118,14 @@ impl CliArgs {
                     .value_parser(clap::value_parser!(usize)),
             )
             .arg(
+                Arg::new("min-ast-nodes")
+                    .long("min-ast-nodes")
+                    .value_name("MIN_AST_NODES")
+                    .help("Minimum number of AST nodes to keep after threshold filtering")
+                    .default_value("10")
+                    .value_parser(clap::value_parser!(usize)),
+            )
+            .arg(
                 Arg::new("max-file-size")
                     .long("max-file-size")
                     .value_name("MAX_FILE_SIZE")
@@ -117,7 +142,10 @@ impl CliArgs {
     }
 
     fn parse_source_path(matches: &clap::ArgMatches) -> PathBuf {
-        let source_path: PathBuf = matches.get_one::<PathBuf>("source-path").unwrap().to_path_buf();
+        let source_path: PathBuf = matches
+            .get_one::<PathBuf>("source-path")
+            .unwrap()
+            .to_path_buf();
         if let Err(err) = CliArgs::validate_source_path(&source_path) {
             eprintln!("{}", err);
             std::process::exit(1);
@@ -155,9 +183,12 @@ impl CliArgs {
             .filter(|s| !s.is_empty())
             .collect()
     }
-    
+
     fn parse_output_format(matches: &clap::ArgMatches) -> String {
-        matches.get_one::<String>("output-format").unwrap().to_string()
+        matches
+            .get_one::<String>("output-format")
+            .unwrap()
+            .to_string()
     }
 
     fn parse_output_file(matches: &clap::ArgMatches) -> Option<PathBuf> {
@@ -171,7 +202,11 @@ impl CliArgs {
     fn parse_threads(matches: &clap::ArgMatches) -> usize {
         *matches.get_one::<usize>("threads").unwrap()
     }
-    
+
+    fn parse_min_ast_nodes(matches: &clap::ArgMatches) -> usize {
+        *matches.get_one::<usize>("min-ast-nodes").unwrap()
+    }
+
     fn parse_max_file_size(matches: &clap::ArgMatches) -> u64 {
         *matches.get_one::<u64>("max-file-size").unwrap()
     }
@@ -188,6 +223,7 @@ impl CliArgs {
             output_format: CliArgs::parse_output_format(matches),
             output_file: CliArgs::parse_output_file(matches),
             threshold: CliArgs::parse_threshold(matches),
+            min_ast_nodes: CliArgs::parse_min_ast_nodes(matches),
             threads: CliArgs::parse_threads(matches),
             max_file_size: CliArgs::parse_max_file_size(matches),
             debug: CliArgs::parse_debug(matches),
@@ -199,7 +235,6 @@ impl CliArgs {
         CliArgs::parse_cli_args(&matches)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -284,16 +319,18 @@ mod tests {
 
         assert_eq!(excludes, vec!["tests", "temp", "build"]);
     }
-    
+
     #[test]
     fn test_parse_output_format() {
-        let matches = CliArgs::command().try_get_matches_from(vec![
-            "code-duplication-detector",
-            "--source-path",
-            "src",
-            "--output-format",
-            "json",
-        ]).unwrap();
+        let matches = CliArgs::command()
+            .try_get_matches_from(vec![
+                "code-duplication-detector",
+                "--source-path",
+                "src",
+                "--output-format",
+                "json",
+            ])
+            .unwrap();
 
         let output_format = CliArgs::parse_output_format(&matches);
         assert_eq!(output_format, "json");
@@ -301,13 +338,15 @@ mod tests {
 
     #[test]
     fn test_parse_output_file() {
-        let matches = CliArgs::command().try_get_matches_from(vec![
-            "code-duplication-detector",
-            "--source-path",
-            "src",
-            "--output-file",
-            "result.json",
-        ]).unwrap();
+        let matches = CliArgs::command()
+            .try_get_matches_from(vec![
+                "code-duplication-detector",
+                "--source-path",
+                "src",
+                "--output-file",
+                "result.json",
+            ])
+            .unwrap();
 
         let output_file = CliArgs::parse_output_file(&matches);
         assert_eq!(output_file, Some(PathBuf::from("result.json")));
@@ -315,13 +354,15 @@ mod tests {
 
     #[test]
     fn test_parse_threshold() {
-        let matches = CliArgs::command().try_get_matches_from(vec![
-            "code-duplication-detector",
-            "--source-path",
-            "src",
-            "--threshold",
-            "10",
-        ]).unwrap();
+        let matches = CliArgs::command()
+            .try_get_matches_from(vec![
+                "code-duplication-detector",
+                "--source-path",
+                "src",
+                "--threshold",
+                "10",
+            ])
+            .unwrap();
 
         let threshold = CliArgs::parse_threshold(&matches);
         assert_eq!(threshold, 10);
@@ -329,27 +370,57 @@ mod tests {
 
     #[test]
     fn test_parse_threads() {
-        let matches = CliArgs::command().try_get_matches_from(vec![
-            "code-duplication-detector",
-            "--source-path",
-            "src",
-            "--threads",
-            "10",
-        ]).unwrap();
+        let matches = CliArgs::command()
+            .try_get_matches_from(vec![
+                "code-duplication-detector",
+                "--source-path",
+                "src",
+                "--threads",
+                "10",
+            ])
+            .unwrap();
 
         let threads = CliArgs::parse_threads(&matches);
         assert_eq!(threads, 10);
     }
-    
+
+    #[test]
+    fn test_parse_min_ast_nodes() {
+        let matches = CliArgs::command()
+            .try_get_matches_from(vec![
+                "code-duplication-detector",
+                "--source-path",
+                "src",
+                "--min-ast-nodes",
+                "12",
+            ])
+            .unwrap();
+
+        let min_ast_nodes = CliArgs::parse_min_ast_nodes(&matches);
+        assert_eq!(min_ast_nodes, 12);
+    }
+
+    #[test]
+    fn test_parse_min_ast_nodes_default() {
+        let matches = CliArgs::command()
+            .try_get_matches_from(vec!["code-duplication-detector", "--source-path", "src"])
+            .unwrap();
+
+        let min_ast_nodes = CliArgs::parse_min_ast_nodes(&matches);
+        assert_eq!(min_ast_nodes, 10);
+    }
+
     #[test]
     fn test_parse_max_file_size() {
-        let matches = CliArgs::command().try_get_matches_from(vec![
-            "code-duplication-detector",
-            "--source-path",
-            "src",
-            "--max-file-size",
-            "1048576",
-        ]).unwrap();
+        let matches = CliArgs::command()
+            .try_get_matches_from(vec![
+                "code-duplication-detector",
+                "--source-path",
+                "src",
+                "--max-file-size",
+                "1048576",
+            ])
+            .unwrap();
 
         let max_file_size = CliArgs::parse_max_file_size(&matches);
         assert_eq!(max_file_size, 1048576);
@@ -357,12 +428,14 @@ mod tests {
 
     #[test]
     fn test_parse_debug() {
-        let matches = CliArgs::command().try_get_matches_from(vec![
-            "code-duplication-detector",
-            "--source-path",
-            "src",
-            "--debug",
-        ]).unwrap();
+        let matches = CliArgs::command()
+            .try_get_matches_from(vec![
+                "code-duplication-detector",
+                "--source-path",
+                "src",
+                "--debug",
+            ])
+            .unwrap();
 
         let debug = CliArgs::parse_debug(&matches);
         assert!(debug);
@@ -370,11 +443,9 @@ mod tests {
 
     #[test]
     fn test_parse_debug_default() {
-        let matches = CliArgs::command().try_get_matches_from(vec![
-            "code-duplication-detector",
-            "--source-path",
-            "src",
-        ]).unwrap();
+        let matches = CliArgs::command()
+            .try_get_matches_from(vec!["code-duplication-detector", "--source-path", "src"])
+            .unwrap();
 
         let debug = CliArgs::parse_debug(&matches);
         assert!(!debug);
@@ -382,20 +453,24 @@ mod tests {
 
     #[test]
     fn test_parse_cli_args() {
-        let matches = CliArgs::command().try_get_matches_from(vec![
-            "code-duplication-detector",
-            "--source-path",
-            "src",
-            "--excludes",
-            "tests,temp,build",
-            "--output-format",
-            "json",
-            "--output-file",
-            "result.json",
-            "--threshold",
-            "10",
-            "--debug",
-        ]).unwrap();
+        let matches = CliArgs::command()
+            .try_get_matches_from(vec![
+                "code-duplication-detector",
+                "--source-path",
+                "src",
+                "--excludes",
+                "tests,temp,build",
+                "--output-format",
+                "json",
+                "--output-file",
+                "result.json",
+                "--threshold",
+                "10",
+                "--min-ast-nodes",
+                "12",
+                "--debug",
+            ])
+            .unwrap();
 
         let cli_args = CliArgs::parse_cli_args(&matches);
 
@@ -404,6 +479,7 @@ mod tests {
         assert_eq!(cli_args.output_format, "json");
         assert_eq!(cli_args.output_file, Some(PathBuf::from("result.json")));
         assert_eq!(cli_args.threshold, 10);
+        assert_eq!(cli_args.min_ast_nodes, 12);
         assert!(cli_args.debug);
     }
 }

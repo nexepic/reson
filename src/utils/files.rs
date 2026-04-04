@@ -13,7 +13,8 @@ pub fn create_temp_file(content: &str, extension: &str) -> PathBuf {
     path.push(format!("{}.{}", random_name, extension));
 
     let mut file = File::create(&path).expect("Failed to create temp file");
-    file.write_all(content.as_bytes()).expect("Failed to write to temp file");
+    file.write_all(content.as_bytes())
+        .expect("Failed to write to temp file");
     path
 }
 

@@ -1,0 +1,52 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Testing
+coverage
+
+# Next.js
+.next/
+.swc/
+.content-collections/
+out/
+build/
+dist/
+
+# Production
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+logs/
+*.log
+*.bak
+*.tsbuildinfo
+
+# Local env files
+.env
+.env*.local
+.env.production
+.env.development
+
+# Vercel
+.vercel
+
+# Turbo
+.turbo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

@@ -1,0 +1,11 @@
+{
+  "name": "@nexdoc/config",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "*.js",
+    "*.json",
+    "index.js"
+  ],
+  "main": "index.js"
+}

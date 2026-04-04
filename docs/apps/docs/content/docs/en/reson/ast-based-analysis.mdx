@@ -1,0 +1,121 @@
+---
+title: AST-based Analysis
+description: How Reson uses AST structure to detect cross-language and literal-tolerant code duplication.
+category: Deep Dive
+order: 4
+project: reson
+projectLabel: Reson
+projectDescription: A high-performance code duplication detector based on AST.
+projectOrder: 1
+---
+
+Abstract Syntax Tree (AST) analysis compares code structure instead of plain text, which improves clone detection precision.
+
+## About AST
+
+Consider the following C code:
+
+```c
+#include <stdio.h>
+
+int main() {
+    int a = 10;
+    int b = 20;
+    int c = a + b;
+
+    printf("Sum: %d\n", c);
+
+    return 0;
+}
+```
+
+AST output (abridged):
+
+```text
+translation_unit
+  preproc_include
+  function_definition
+    primitive_type
+    function_declarator
+    compound_statement
+      declaration
+      declaration
+      declaration
+      expression_statement
+      return_statement
+```
+
+## Why It Improves Duplicate Detection
+
+### Cross-language structural similarity
+
+C:
+
+```c
+int run() {
+    print_hello_test_f1();
+    print_hello_test_f2();
+    return 0;
+}
+```
+
+C++:
+
+```cpp
+int run() {
+    print_hello_test_h1();
+    print_hello_test_h2();
+    return 0;
+}
+```
+
+These can map to an equivalent AST shape, so Reson can detect the duplication robustly.
+
+### Literal changes are tolerated
+
+```c
+int run() {
+    for (int i = 0; i < 10; i++) {
+        printf("Hello, World!\\n");
+    }
+    return 0;
+}
+```
+
+```c
+int run() {
+    for (int i = 0; i < 10; i++) {
+        printf("Hello, World again!\\n");
+    }
+    return 0;
+}
+```
+
+Reson identifies the whole duplicated structure instead of splitting around changed literals.
+
+### Comments do not break structural matching
+
+```c
+int run() {
+    for (int i = 0; i < 10; i++) {
+        // Print Hello, World!
+        printf("Hello, World!\\n");
+    }
+    return 0;
+}
+```
+
+```c
+int run() {
+    /*
+     * This is a comment
+     */
+    for (int i = 0; i < 10; i++) {
+        // This is a comment
+        printf("Hello, World!\\n"); // Print Hello, World!
+    }
+    return 0;
+}
+```
+
+AST-guided matching lets Reson stay accurate even with noisy comment and literal differences.
