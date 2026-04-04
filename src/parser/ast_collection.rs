@@ -2,7 +2,10 @@ use blake3::Hasher;
 use tree_sitter::Node;
 
 pub fn compute_ast_fingerprint(ast_representation: &str) -> String {
-    log::debug!("Computing AST fingerprint for AST representation: {}", ast_representation);
+    log::debug!(
+        "Computing AST fingerprint for AST representation: {}",
+        ast_representation
+    );
     let mut hasher = Hasher::new();
 
     hasher.update(ast_representation.as_bytes());
@@ -20,7 +23,11 @@ pub fn collect_ast_content(node: Node, source: &str) -> (String, usize) {
     while let Some(current_node) = stack.pop() {
         if current_node.is_named() && !current_node.kind().contains("comment") {
             let node_text = &source[current_node.start_byte()..current_node.end_byte()];
-            log::debug!("Node type: {:?}, text: {:?}", current_node.kind(), node_text);
+            log::debug!(
+                "Node type: {:?}, text: {:?}",
+                current_node.kind(),
+                node_text
+            );
             ast_output.push_str(&format!("{:?}\n", current_node.kind()));
             line_count += 1;
         }
@@ -52,9 +59,9 @@ mod tests {
                   arguments: (token_tree
                     (literal)))))))
         "#;
-    
+
         let fingerprint = compute_ast_fingerprint(ast_representation);
-    
+
         assert!(!fingerprint.is_empty());
         assert_eq!(fingerprint.len(), 64); // Blake3 hash length in hex is 64 characters
     }
@@ -82,17 +89,27 @@ mod tests {
         "#;
         let mut parser = Parser::new();
         let tree_sitter_language = tree_sitter_c::language();
-        parser.set_language(tree_sitter_language).expect("Failed to set language");
-        let parsed_tree = parser.parse(content, None).expect("Failed to parse content");
-        let parsed_tree_without_comments = parser.parse(content_without_comments, None).expect("Failed to parse content without comments");
+        parser
+            .set_language(tree_sitter_language)
+            .expect("Failed to set language");
+        let parsed_tree = parser
+            .parse(content, None)
+            .expect("Failed to parse content");
+        let parsed_tree_without_comments = parser
+            .parse(content_without_comments, None)
+            .expect("Failed to parse content without comments");
 
-        let (ast_representation, _ast_lines) = collect_ast_content(parsed_tree.root_node(), content);
-        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(parsed_tree_without_comments.root_node(), content_without_comments);
-        
+        let (ast_representation, _ast_lines) =
+            collect_ast_content(parsed_tree.root_node(), content);
+        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(
+            parsed_tree_without_comments.root_node(),
+            content_without_comments,
+        );
+
         assert!(!ast_representation.contains("comment"));
         assert_eq!(ast_representation, ast_representation_without_comments);
     }
-    
+
     #[test]
     fn test_collect_ast_content_with_comments_cpp() {
         let content = r#"
@@ -116,17 +133,27 @@ mod tests {
         "#;
         let mut parser = Parser::new();
         let tree_sitter_language = tree_sitter_cpp::language();
-        parser.set_language(tree_sitter_language).expect("Failed to set language");
-        let parsed_tree = parser.parse(content, None).expect("Failed to parse content");
-        let parsed_tree_without_comments = parser.parse(content_without_comments, None).expect("Failed to parse content without comments");
+        parser
+            .set_language(tree_sitter_language)
+            .expect("Failed to set language");
+        let parsed_tree = parser
+            .parse(content, None)
+            .expect("Failed to parse content");
+        let parsed_tree_without_comments = parser
+            .parse(content_without_comments, None)
+            .expect("Failed to parse content without comments");
 
-        let (ast_representation, _ast_lines) = collect_ast_content(parsed_tree.root_node(), content);
-        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(parsed_tree_without_comments.root_node(), content_without_comments);
-        
+        let (ast_representation, _ast_lines) =
+            collect_ast_content(parsed_tree.root_node(), content);
+        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(
+            parsed_tree_without_comments.root_node(),
+            content_without_comments,
+        );
+
         assert!(!ast_representation.contains("comment"));
         assert_eq!(ast_representation, ast_representation_without_comments);
     }
-    
+
     #[test]
     fn test_collect_ast_content_with_comments_java() {
         let content = r#"
@@ -152,17 +179,27 @@ mod tests {
         "#;
         let mut parser = Parser::new();
         let tree_sitter_language = tree_sitter_java::language();
-        parser.set_language(tree_sitter_language).expect("Failed to set language");
-        let parsed_tree = parser.parse(content, None).expect("Failed to parse content");
-        let parsed_tree_without_comments = parser.parse(content_without_comments, None).expect("Failed to parse content without comments");
+        parser
+            .set_language(tree_sitter_language)
+            .expect("Failed to set language");
+        let parsed_tree = parser
+            .parse(content, None)
+            .expect("Failed to parse content");
+        let parsed_tree_without_comments = parser
+            .parse(content_without_comments, None)
+            .expect("Failed to parse content without comments");
 
-        let (ast_representation, _ast_lines) = collect_ast_content(parsed_tree.root_node(), content);
-        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(parsed_tree_without_comments.root_node(), content_without_comments);
-        
+        let (ast_representation, _ast_lines) =
+            collect_ast_content(parsed_tree.root_node(), content);
+        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(
+            parsed_tree_without_comments.root_node(),
+            content_without_comments,
+        );
+
         assert!(!ast_representation.contains("comment"));
         assert_eq!(ast_representation, ast_representation_without_comments);
     }
-    
+
     #[test]
     fn test_collect_ast_content_with_comments_javascript() {
         let content = r#"
@@ -186,17 +223,27 @@ mod tests {
         "#;
         let mut parser = Parser::new();
         let tree_sitter_language = tree_sitter_javascript::language();
-        parser.set_language(tree_sitter_language).expect("Failed to set language");
-        let parsed_tree = parser.parse(content, None).expect("Failed to parse content");
-        let parsed_tree_without_comments = parser.parse(content_without_comments, None).expect("Failed to parse content without comments");
+        parser
+            .set_language(tree_sitter_language)
+            .expect("Failed to set language");
+        let parsed_tree = parser
+            .parse(content, None)
+            .expect("Failed to parse content");
+        let parsed_tree_without_comments = parser
+            .parse(content_without_comments, None)
+            .expect("Failed to parse content without comments");
 
-        let (ast_representation, _ast_lines) = collect_ast_content(parsed_tree.root_node(), content);
-        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(parsed_tree_without_comments.root_node(), content_without_comments);
-        
+        let (ast_representation, _ast_lines) =
+            collect_ast_content(parsed_tree.root_node(), content);
+        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(
+            parsed_tree_without_comments.root_node(),
+            content_without_comments,
+        );
+
         assert!(!ast_representation.contains("comment"));
         assert_eq!(ast_representation, ast_representation_without_comments);
     }
-    
+
     #[test]
     fn test_collect_ast_content_with_comments_typescript() {
         let content = r#"
@@ -220,17 +267,27 @@ mod tests {
         "#;
         let mut parser = Parser::new();
         let tree_sitter_language = tree_sitter_typescript::language_typescript();
-        parser.set_language(tree_sitter_language).expect("Failed to set language");
-        let parsed_tree = parser.parse(content, None).expect("Failed to parse content");
-        let parsed_tree_without_comments = parser.parse(content_without_comments, None).expect("Failed to parse content without comments");
+        parser
+            .set_language(tree_sitter_language)
+            .expect("Failed to set language");
+        let parsed_tree = parser
+            .parse(content, None)
+            .expect("Failed to parse content");
+        let parsed_tree_without_comments = parser
+            .parse(content_without_comments, None)
+            .expect("Failed to parse content without comments");
 
-        let (ast_representation, _ast_lines) = collect_ast_content(parsed_tree.root_node(), content);
-        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(parsed_tree_without_comments.root_node(), content_without_comments);
-        
+        let (ast_representation, _ast_lines) =
+            collect_ast_content(parsed_tree.root_node(), content);
+        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(
+            parsed_tree_without_comments.root_node(),
+            content_without_comments,
+        );
+
         assert!(!ast_representation.contains("comment"));
         assert_eq!(ast_representation, ast_representation_without_comments);
     }
-    
+
     #[test]
     fn test_collect_ast_content_with_comments_python() {
         let content = r#"
@@ -244,17 +301,27 @@ mod tests {
         "#;
         let mut parser = Parser::new();
         let tree_sitter_language = tree_sitter_python::language();
-        parser.set_language(tree_sitter_language).expect("Failed to set language");
-        let parsed_tree = parser.parse(content, None).expect("Failed to parse content");
-        let parsed_tree_without_comments = parser.parse(content_without_comments, None).expect("Failed to parse content without comments");
+        parser
+            .set_language(tree_sitter_language)
+            .expect("Failed to set language");
+        let parsed_tree = parser
+            .parse(content, None)
+            .expect("Failed to parse content");
+        let parsed_tree_without_comments = parser
+            .parse(content_without_comments, None)
+            .expect("Failed to parse content without comments");
 
-        let (ast_representation, _ast_lines) = collect_ast_content(parsed_tree.root_node(), content);
-        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(parsed_tree_without_comments.root_node(), content_without_comments);
-        
+        let (ast_representation, _ast_lines) =
+            collect_ast_content(parsed_tree.root_node(), content);
+        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(
+            parsed_tree_without_comments.root_node(),
+            content_without_comments,
+        );
+
         assert!(!ast_representation.contains("comment"));
         assert_eq!(ast_representation, ast_representation_without_comments);
     }
-    
+
     #[test]
     fn test_collect_ast_content_with_comments_golang() {
         let content = r#"
@@ -286,17 +353,27 @@ mod tests {
         "#;
         let mut parser = Parser::new();
         let tree_sitter_language = tree_sitter_go::language();
-        parser.set_language(tree_sitter_language).expect("Failed to set language");
-        let parsed_tree = parser.parse(content, None).expect("Failed to parse content");
-        let parsed_tree_without_comments = parser.parse(content_without_comments, None).expect("Failed to parse content without comments");
+        parser
+            .set_language(tree_sitter_language)
+            .expect("Failed to set language");
+        let parsed_tree = parser
+            .parse(content, None)
+            .expect("Failed to parse content");
+        let parsed_tree_without_comments = parser
+            .parse(content_without_comments, None)
+            .expect("Failed to parse content without comments");
 
-        let (ast_representation, _ast_lines) = collect_ast_content(parsed_tree.root_node(), content);
-        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(parsed_tree_without_comments.root_node(), content_without_comments);
-        
+        let (ast_representation, _ast_lines) =
+            collect_ast_content(parsed_tree.root_node(), content);
+        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(
+            parsed_tree_without_comments.root_node(),
+            content_without_comments,
+        );
+
         assert!(!ast_representation.contains("comment"));
         assert_eq!(ast_representation, ast_representation_without_comments);
     }
-    
+
     #[test]
     fn test_collect_ast_content_with_comments_rust() {
         let content = r#"
@@ -320,13 +397,23 @@ mod tests {
         "#;
         let mut parser = Parser::new();
         let tree_sitter_language = tree_sitter_rust::language();
-        parser.set_language(tree_sitter_language).expect("Failed to set language");
-        let parsed_tree = parser.parse(content, None).expect("Failed to parse content");
-        let parsed_tree_without_comments = parser.parse(content_without_comments, None).expect("Failed to parse content without comments");
+        parser
+            .set_language(tree_sitter_language)
+            .expect("Failed to set language");
+        let parsed_tree = parser
+            .parse(content, None)
+            .expect("Failed to parse content");
+        let parsed_tree_without_comments = parser
+            .parse(content_without_comments, None)
+            .expect("Failed to parse content without comments");
 
-        let (ast_representation, _ast_lines) = collect_ast_content(parsed_tree.root_node(), content);
-        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(parsed_tree_without_comments.root_node(), content_without_comments);
-        
+        let (ast_representation, _ast_lines) =
+            collect_ast_content(parsed_tree.root_node(), content);
+        let (ast_representation_without_comments, _ast_lines) = collect_ast_content(
+            parsed_tree_without_comments.root_node(),
+            content_without_comments,
+        );
+
         assert!(!ast_representation.contains("comment"));
         assert_eq!(ast_representation, ast_representation_without_comments);
     }

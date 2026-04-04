@@ -1,14 +1,14 @@
 mod cli;
 mod detector;
+mod models;
 mod parser;
 mod utils;
-mod models;
 
 use crate::cli::CliArgs;
 use crate::detector::detect_duplicates;
-use log::LevelFilter;
-use env_logger::Env;
 use crate::utils::output::write_output;
+use env_logger::Env;
+use log::LevelFilter;
 
 fn run(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logger
@@ -23,7 +23,11 @@ fn run(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
     let duplicates = detect_duplicates(&args, args.threads);
 
     // Output results based on format
-    write_output(&duplicates, &args.output_format.as_str(), args.output_file.as_deref())?;
+    write_output(
+        &duplicates,
+        &args.output_format.as_str(),
+        args.output_file.as_deref(),
+    )?;
 
     Ok(())
 }
@@ -37,8 +41,8 @@ fn main() {
 
 #[cfg(test)]
 mod integration_tests {
-    use super::run;
     use super::cli::CliArgs;
+    use super::run;
     use clap::Parser;
     use tempfile::NamedTempFile;
 
@@ -49,11 +53,16 @@ mod integration_tests {
 
         let args = CliArgs::parse_from(vec![
             "program_name",
-            "--source-path", "src",
-            "--languages", "rust",
-            "--excludes", "tests,temp,build",
-            "--output-format", "json",
-            "--output-file", output_path,
+            "--source-path",
+            "src",
+            "--languages",
+            "rust",
+            "--excludes",
+            "tests,temp,build",
+            "--output-format",
+            "json",
+            "--output-file",
+            output_path,
         ]);
 
         let result = run(args);

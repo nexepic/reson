@@ -1,61 +1,49 @@
-name: Deploy to GitHub Pages
+name: Deploy Docs to GitHub Pages
 
 on:
   push:
     branches:
       - main
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   build:
-    name: Build Docusaurus
+    name: Build NexDoc
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 18
-          cache: yarn
-          cache-dependency-path: docs/yarn.lock
+          bun-version: latest
 
       - name: Install dependencies
         run: |
           cd docs
-          yarn install --frozen-lockfile
+          bun install
 
-      - name: Create versioned docs
+      - name: Build static site for GitHub Pages
         run: |
-          cd docs
-          VERSION=$(node -p "require('./package.json').version")
-          echo "Detected version: $VERSION"
-          yarn docusaurus docs:version $VERSION
+          cd docs/apps/docs
+          bun run build:gh-pages
 
-      - name: Build website
-        run: |
-          cd docs
-          yarn build
-
-      - name: Upload Build Artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/build
+          path: docs/apps/docs/out
 
   deploy:
     name: Deploy to GitHub Pages
     needs: build
-
-    permissions:
-      pages: write
-      id-token: write
-
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
-    runs-on: ubuntu-latest
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4

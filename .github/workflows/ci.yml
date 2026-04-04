@@ -42,23 +42,20 @@ jobs:
       - name: Set Rust stable as default
         run: rustup default stable
 
-      - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin
+      - name: Install llvm-tools-preview
+        run: rustup component add llvm-tools-preview
 
-      - name: Build project
-        run: cargo build --verbose
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov --locked
 
-      - name: Run tests
-        run: cargo test --verbose
-
-      - name: Generate coverage report
-        run: cargo tarpaulin --out Xml
+      - name: Run tests and generate coverage report
+        run: cargo llvm-cov --workspace --lcov --output-path lcov.info
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./cobertura.xml
+          files: ./lcov.info
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: true

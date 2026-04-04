@@ -31,7 +31,10 @@ mod tests {
     fn test_get_language_mapping() {
         let mapping = get_language_mapping();
         assert_eq!(mapping.get("c"), Some(&vec!["c", "h"]));
-        assert_eq!(mapping.get("cpp"), Some(&vec!["cpp", "cc", "cxx", "hpp", "hxx"]));
+        assert_eq!(
+            mapping.get("cpp"),
+            Some(&vec!["cpp", "cc", "cxx", "hpp", "hxx"])
+        );
         assert_eq!(mapping.get("java"), Some(&vec!["java"]));
         assert_eq!(mapping.get("javascript"), Some(&vec!["js", "jsx"]));
         assert_eq!(mapping.get("typescript"), Some(&vec!["ts", "tsx"]));
