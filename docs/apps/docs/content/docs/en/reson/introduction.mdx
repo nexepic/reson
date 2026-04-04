@@ -1,0 +1,67 @@
+---
+title: Introduction
+description: Reson is a high-performance AST-based code duplication detector for multi-language repositories.
+category: Getting Started
+order: 1
+project: reson
+projectLabel: Reson
+projectDescription: A high-performance code duplication detector based on AST.
+projectOrder: 1
+---
+
+**Reson** is a robust CLI tool for detecting duplicated code across source files by analyzing Abstract Syntax Trees (AST), not plain text.
+
+> Detect structural clones with higher precision, reduce noisy matches, and keep large repositories maintainable.
+
+## Why Reson
+
+- **AST-based Analysis**: compare structure instead of raw text.
+- **Customizable Thresholds**: control both minimum duplicated lines and minimum AST nodes.
+- **Path Exclusions**: ignore generated or irrelevant directories.
+- **Flexible Output**: export duplication reports in JSON or XML.
+- **Debug Visibility**: inspect parser and analysis behavior when needed.
+
+## Supported Languages
+
+| Language   | File Extensions                        |
+|------------|----------------------------------------|
+| C          | `.c`, `.h`                             |
+| C++        | `.cpp`, `.cc`, `.cxx`, `.hpp`, `.hxx` |
+| Java       | `.java`                                |
+| JavaScript | `.js`, `.jsx`                          |
+| TypeScript | `.ts`, `.tsx`                          |
+| Python     | `.py`                                  |
+| Go         | `.go`                                  |
+| Rust       | `.rs`                                  |
+
+## Build From Source
+
+```bash
+git clone https://github.com/nexepic/reson.git
+cd reson
+cargo build --release
+```
+
+## Basic Usage
+
+```bash
+./reson --source-path <path_to_source> [options]
+```
+
+## Example
+
+```bash
+./reson \
+  --source-path src \
+  --excludes tests,build \
+  --output-format json \
+  --output-file result.json \
+  --threshold 10 \
+  --min-ast-nodes 12
+```
+
+## Development
+
+```bash
+cargo test
+```

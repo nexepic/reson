@@ -1,0 +1,78 @@
+---
+title: 使用示例
+description: 语言过滤、路径排除、阈值调整与输出配置示例。
+category: 使用指南
+order: 3
+project: reson
+projectLabel: Reson
+projectDescription: 基于 AST 的高性能代码重复检测工具。
+projectOrder: 1
+---
+
+## 指定语言
+
+```bash
+./reson \
+  --source-path src \
+  --languages rust
+```
+
+多语言：
+
+```bash
+./reson \
+  --source-path src \
+  --languages rust,python
+```
+
+## 排除目录与文件
+
+```bash
+./reson \
+  --source-path src \
+  --excludes "**/test/**"
+```
+
+```bash
+./reson \
+  --source-path src \
+  --excludes "test,build"
+```
+
+```bash
+./reson \
+  --source-path src \
+  --excludes "**/*.md"
+```
+
+```bash
+./reson \
+  --source-path src \
+  --excludes "**/README.md"
+```
+
+## 设置阈值
+
+```bash
+./reson \
+  --source-path src \
+  --threshold 10
+```
+
+## 设置最小 AST 节点数
+
+```bash
+./reson \
+  --source-path src \
+  --threshold 10 \
+  --min-ast-nodes 12
+```
+
+## 输出到文件
+
+```bash
+./reson \
+  --source-path src \
+  --output-format json \
+  --output-file result.json
+```
