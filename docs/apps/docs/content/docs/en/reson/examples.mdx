@@ -1,0 +1,104 @@
+---
+title: Examples
+description: Practical command examples for language selection, exclusions, thresholds, and reporting.
+category: Usage
+order: 3
+project: reson
+projectLabel: Reson
+projectDescription: A high-performance code duplication detector based on AST.
+projectOrder: 1
+---
+
+## Specify Languages
+
+```bash
+./reson \
+  --source-path src \
+  --languages rust
+```
+
+Multiple languages:
+
+```bash
+./reson \
+  --source-path src \
+  --languages rust,python
+```
+
+## Exclude Paths
+
+Exclude all `test` directories:
+
+```bash
+./reson \
+  --source-path src \
+  --excludes "**/test/**"
+```
+
+Exclude multiple directories:
+
+```bash
+./reson \
+  --source-path src \
+  --excludes "test,build"
+```
+
+Exclude files by extension:
+
+```bash
+./reson \
+  --source-path src \
+  --excludes "**/*.md"
+```
+
+Exclude files by name:
+
+```bash
+./reson \
+  --source-path src \
+  --excludes "**/README.md"
+```
+
+## Custom Threshold
+
+```bash
+./reson \
+  --source-path src \
+  --threshold 10
+```
+
+## Minimum AST Nodes
+
+```bash
+./reson \
+  --source-path src \
+  --threshold 10 \
+  --min-ast-nodes 12
+```
+
+## Output to File
+
+```bash
+./reson \
+  --source-path src \
+  --output-format json \
+  --output-file result.json
+```
+
+If `--output-file` is omitted, Reson writes to `duplications` in the current directory.
+
+## Maximum File Size
+
+```bash
+./reson \
+  --source-path src \
+  --max-file-size 1048576
+```
+
+## Number of Threads
+
+```bash
+./reson \
+  --source-path src \
+  --threads 10
+```

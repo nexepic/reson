@@ -1,0 +1,86 @@
+---
+title: Quick Start
+description: Run your first duplication scan in minutes.
+category: Getting Started
+order: 2
+project: reson
+projectLabel: Reson
+projectDescription: A high-performance code duplication detector based on AST.
+projectOrder: 1
+---
+
+Run a quick scan:
+
+```bash
+./reson --source-path <path_to_source>
+```
+
+## Key Options
+
+### `--source-path`
+
+- Description: source directory to scan.
+- Required: yes.
+
+### `--languages`
+
+- Description: comma-separated languages.
+- Default: `c,cpp,java,javascript,typescript,python,golang,rust`
+- Example:
+
+```bash
+./reson --source-path /path --languages java,python
+```
+
+### `--excludes`
+
+- Description: comma-separated exclusions.
+- Example:
+
+```bash
+./reson --source-path /path --excludes node_modules,target
+```
+
+### `--threshold`
+
+- Description: minimum duplicated lines.
+- Default: `5`
+- Example:
+
+```bash
+./reson --source-path /path --threshold 10
+```
+
+### `--min-ast-nodes`
+
+- Description: minimum AST node count per candidate block after line-threshold filtering.
+- Default: `10`
+- Example:
+
+```bash
+./reson --source-path /path --threshold 10 --min-ast-nodes 12
+```
+
+### `--output-format`
+
+- Description: report format.
+- Options: `json`, `xml`
+
+### `--output-file`
+
+- Description: output filename.
+- Example:
+
+```bash
+./reson --source-path /path --output-file report.json
+```
+
+### `--max-file-size`
+
+- Description: max bytes per file.
+- Default: `1048576`
+
+### `--threads`
+
+- Description: worker thread count.
+- Default: `10`

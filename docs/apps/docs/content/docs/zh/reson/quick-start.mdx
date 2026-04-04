@@ -1,0 +1,71 @@
+---
+title: 快速开始
+description: 几分钟内完成第一次重复代码扫描。
+category: 快速开始
+order: 2
+project: reson
+projectLabel: Reson
+projectDescription: 基于 AST 的高性能代码重复检测工具。
+projectOrder: 1
+---
+
+快速扫描：
+
+```bash
+./reson --source-path <path_to_source>
+```
+
+## 常用参数
+
+### `--source-path`
+
+- 说明：要扫描的源码目录。
+- 必填：是。
+
+### `--languages`
+
+- 说明：逗号分隔的语言列表。
+- 默认：`c,cpp,java,javascript,typescript,python,golang,rust`
+
+### `--excludes`
+
+- 说明：逗号分隔的排除路径。
+- 示例：
+
+```bash
+./reson --source-path /path --excludes node_modules,target
+```
+
+### `--threshold`
+
+- 说明：最小重复行数。
+- 默认：`5`
+
+### `--min-ast-nodes`
+
+- 说明：在行数阈值过滤后，保留代码块所需的最小 AST 节点数。
+- 默认：`10`
+- 示例：
+
+```bash
+./reson --source-path /path --threshold 10 --min-ast-nodes 12
+```
+
+### `--output-format`
+
+- 说明：报告格式。
+- 可选：`json`, `xml`
+
+### `--output-file`
+
+- 说明：输出文件名。
+
+### `--max-file-size`
+
+- 说明：单文件最大处理字节数。
+- 默认：`1048576`
+
+### `--threads`
+
+- 说明：并行线程数。
+- 默认：`10`

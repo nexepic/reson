@@ -1,8 +1,8 @@
 <p align="center">
     <a href="https://nexepic.github.io/reson">
         <picture>
-            <source srcset="./docs/static/img/icon-light.svg" media="(prefers-color-scheme: dark)">
-            <img src="./docs/static/img/icon.svg" alt="icon" width="120" />
+            <source srcset="./docs/apps/docs/public/assets/brand/icon-light.svg" media="(prefers-color-scheme: dark)">
+            <img src="./docs/apps/docs/public/assets/brand/icon.svg" alt="icon" width="120" />
         </picture>
     </a>
 </p>
@@ -36,6 +36,7 @@ This tool helps maintain high-quality codebases by identifying redundant code bl
 
 - **AST-based Analysis**: Ensures precise duplication detection by analyzing the code structure rather than plain text.
 - **Customizable Thresholds**: Define the minimum number of lines to consider as duplicates.
+- **AST Node Floor**: Filter out tiny structural fragments with `--min-ast-nodes`.
 - **Exclude Directories/Files**: Easily exclude specific paths from the analysis.
 - **Flexible Output Options**: Generate detailed reports in JSON and other formats.
 - **Debug Mode**: Access additional logs for debugging and deeper analysis.
@@ -89,7 +90,8 @@ Detect code duplication in the src directory, excluding tests and build director
   --excludes tests,build \
   --output-format json \
   --output-file result.json \
-  --threshold 10
+  --threshold 10 \
+  --min-ast-nodes 12
 ```
 
 ---
