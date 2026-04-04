@@ -49,7 +49,6 @@ const baseSiteConfig = defineNexDocConfig({
       ogImage: '/assets/social/og-default.svg',
       twitterImage: '/assets/social/og-default.svg',
     },
-    manifest: '/site.webmanifest',
   },
   nav: [
     {
