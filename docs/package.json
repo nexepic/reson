@@ -7,10 +7,10 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "cd apps/docs && npm run dev",
-    "build": "cd apps/docs && npm run build",
-    "start": "cd apps/docs && npm run start",
-    "lint": "cd apps/docs && npm run lint",
+    "dev": "cd apps/docs && bun run dev",
+    "build": "cd apps/docs && bun run build",
+    "start": "cd apps/docs && bun run start",
+    "lint": "cd apps/docs && bun run lint",
     "clean": "rm -rf apps/docs/.next apps/docs/.swc apps/docs/.content-collections apps/docs/tsconfig.tsbuildinfo",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
   },

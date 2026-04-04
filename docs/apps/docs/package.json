@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run check:links && next build",
+    "build": "bun run check:links && next build",
     "check:links": "node ./scripts/check-doc-links.mjs",
-    "build:gh-pages": "BASE_PATH=/reson npm run build",
+    "build:gh-pages": "BASE_PATH=/reson bun run build",
     "start": "next start",
     "clean": "rm -rf .next .swc .content-collections tsconfig.tsbuildinfo",
     "lint": "next lint",
