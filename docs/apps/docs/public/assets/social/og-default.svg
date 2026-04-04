@@ -1,0 +1,37 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="96" y1="72" x2="1116" y2="558" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0D1117"/>
+      <stop offset="1" stop-color="#1C2532"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(860 120) rotate(130) scale(460 360)">
+      <stop stop-color="#8B9FC5" stop-opacity="0.56"/>
+      <stop offset="1" stop-color="#8B9FC5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <g opacity="0.35" stroke="#8B9FC5" stroke-width="1">
+    <path d="M80 150H1120"/>
+    <path d="M80 230H1120"/>
+    <path d="M80 310H1120"/>
+    <path d="M80 390H1120"/>
+    <path d="M80 470H1120"/>
+    <path d="M220 90V540"/>
+    <path d="M360 90V540"/>
+    <path d="M500 90V540"/>
+    <path d="M640 90V540"/>
+    <path d="M780 90V540"/>
+    <path d="M920 90V540"/>
+  </g>
+  <rect x="90" y="90" width="1020" height="450" rx="22" fill="none" stroke="#8B9FC5" stroke-opacity="0.45"/>
+  <text x="140" y="264" fill="#E6EDF3" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="84" font-weight="700">
+    Reson Documentation
+  </text>
+  <text x="140" y="338" fill="#A9B7CF" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="34" font-weight="500">
+    AST-based code duplication detection for multi-language repositories
+  </text>
+  <text x="140" y="458" fill="#8B9FC5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="28">
+    C/C++ · Java · JavaScript · TypeScript · Python · Go · Rust
+  </text>
+</svg>

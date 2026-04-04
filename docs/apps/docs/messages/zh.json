@@ -1,0 +1,40 @@
+{
+  "home": {
+    "title": "欢迎使用 NexDoc",
+    "description": "基于 Next.js 15、Tailwind CSS 和 MDX 构建的现代化文档框架。创建美观、SEO 友好的文档，支持全文搜索、国际化等功能。",
+    "getStarted": "开始使用",
+    "github": "GitHub",
+    "features": {
+      "title": "应有尽有",
+      "markdown": {
+        "title": "Markdown/MDX 支持",
+        "description": "使用 Markdown 或 MDX 编写文档，完全支持 React 组件。"
+      },
+      "search": {
+        "title": "全文搜索",
+        "description": "由 FlexSearch 驱动的强大搜索功能，快速查找内容。"
+      },
+      "i18n": {
+        "title": "国际化",
+        "description": "通过 next-intl 内置多语言支持，轻松实现本地化。"
+      },
+      "mdx": {
+        "title": "MDX 组件",
+        "description": "丰富的预置组件，包括提示框、带复制按钮的代码块等。"
+      },
+      "fast": {
+        "title": "闪电般快速",
+        "description": "通过 Next.js 15 静态站点生成，实现最佳性能和 SEO。"
+      },
+      "seo": {
+        "title": "SEO 优化",
+        "description": "内置站点地图、robots.txt 和元数据生成，提升搜索排名。"
+      }
+    },
+    "cta": {
+      "title": "准备开始了吗？",
+      "description": "通过我们的简单设置流程，在几分钟内创建您的第一个文档站点。",
+      "button": "阅读文档"
+    }
+  }
+}

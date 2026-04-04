@@ -24,11 +24,12 @@ pub type CodeBlockRef = Rc<RefCell<CodeBlockNode>>;
 
 impl Ord for CodeBlock {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.start_byte.cmp(&other.start_byte)
+        self.start_byte
+            .cmp(&other.start_byte)
             .then_with(|| self.end_byte.cmp(&other.end_byte))
             .then_with(|| self.start_line.cmp(&other.start_line))
             .then_with(|| self.end_line.cmp(&other.end_line))
-            // .then_with(|| self.content.cmp(&other.content))
+        // .then_with(|| self.content.cmp(&other.content))
     }
 }
 
@@ -64,7 +65,7 @@ mod tests {
             // content: "int main() { return 0; }".to_string(),
             // ast_representation: "".to_string()
             fingerprint: "".to_string(),
-            ast_lines: 5
+            ast_lines: 5,
         };
 
         let block2 = CodeBlock {
@@ -75,7 +76,7 @@ mod tests {
             // content: "int a = 10;".to_string(),
             // ast_representation: "".to_string()
             fingerprint: "".to_string(),
-            ast_lines: 5
+            ast_lines: 5,
         };
 
         let block3 = CodeBlock {
@@ -86,7 +87,7 @@ mod tests {
             // content: "return a;".to_string(),
             // ast_representation: "".to_string()
             fingerprint: "".to_string(),
-            ast_lines: 5
+            ast_lines: 5,
         };
 
         let mut blocks = BTreeSet::new();
@@ -110,7 +111,7 @@ mod tests {
             // content: "int main() { return 0; }".to_string(),
             // ast_representation: "".to_string()
             fingerprint: "".to_string(),
-            ast_lines: 5
+            ast_lines: 5,
         };
 
         let block2 = CodeBlock {
@@ -121,7 +122,7 @@ mod tests {
             // content: "int main() { return 0; }".to_string(),
             // ast_representation: "".to_string()
             fingerprint: "".to_string(),
-            ast_lines: 5
+            ast_lines: 5,
         };
 
         assert_eq!(block1, block2);
@@ -137,7 +138,7 @@ mod tests {
             // content: "int main() { return 0; }".to_string(),
             // ast_representation: "".to_string()
             fingerprint: "a".to_string(),
-            ast_lines: 5
+            ast_lines: 5,
         };
 
         let block2 = CodeBlock {
@@ -148,7 +149,7 @@ mod tests {
             // content: "int main() { return 1; }".to_string(),
             // ast_representation: "".to_string()
             fingerprint: "b".to_string(),
-            ast_lines: 5
+            ast_lines: 5,
         };
 
         assert_ne!(block1, block2);
@@ -164,7 +165,7 @@ mod tests {
             // content: "int main() { return 0; }".to_string(),
             // ast_representation: "".to_string()
             fingerprint: "".to_string(),
-            ast_lines: 5
+            ast_lines: 5,
         };
 
         let block2 = CodeBlock {
@@ -175,7 +176,7 @@ mod tests {
             // content: "int a = 10;".to_string(),
             // ast_representation: "".to_string()
             fingerprint: "".to_string(),
-            ast_lines: 5
+            ast_lines: 5,
         };
 
         assert!(block1 < block2);

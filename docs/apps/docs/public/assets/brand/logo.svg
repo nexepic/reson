@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 64" role="img" aria-label="NexDoc logo">
+  <defs>
+    <linearGradient id="nexdoc-logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="url(#nexdoc-logo-gradient)" />
+  <path d="M18 44V20h5l18 16V20h5v24h-5L23 28v16z" fill="#fff" />
+  <text x="82" y="41" font-size="32" font-family="Inter, Segoe UI, sans-serif" font-weight="700" fill="#0f172a">
+    NexDoc
+  </text>
+</svg>

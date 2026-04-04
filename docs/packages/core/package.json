@@ -1,0 +1,16 @@
+{
+  "name": "@nexdoc/core",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./config": "./src/config.ts",
+    "./mdx": "./src/mdx.ts",
+    "./utils": "./src/utils.ts",
+    "./plugins/mermaid": "./src/plugins/mermaid.ts"
+  },
+  "dependencies": {
+    "clsx": "^2.1.0"
+  }
+}

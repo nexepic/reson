@@ -1,0 +1,40 @@
+{
+  "home": {
+    "title": "Welcome to NexDoc",
+    "description": "A modern documentation framework built with Next.js 15, Tailwind CSS, and MDX. Create beautiful, SEO-friendly docs with full-text search, internationalization, and more.",
+    "getStarted": "Get Started",
+    "github": "GitHub",
+    "features": {
+      "title": "Everything you need",
+      "markdown": {
+        "title": "Markdown/MDX Support",
+        "description": "Write your documentation in Markdown or MDX with full support for React components."
+      },
+      "search": {
+        "title": "Full-Text Search",
+        "description": "Powerful search functionality powered by FlexSearch for finding content quickly."
+      },
+      "i18n": {
+        "title": "Internationalization",
+        "description": "Built-in support for multiple languages with next-intl for easy localization."
+      },
+      "mdx": {
+        "title": "MDX Components",
+        "description": "Rich set of pre-built components including callouts, code blocks with copy buttons, and more."
+      },
+      "fast": {
+        "title": "Lightning Fast",
+        "description": "Static site generation with Next.js 15 for optimal performance and SEO."
+      },
+      "seo": {
+        "title": "SEO Optimized",
+        "description": "Built-in sitemap, robots.txt, and metadata generation for better search rankings."
+      }
+    },
+    "cta": {
+      "title": "Ready to get started?",
+      "description": "Create your first documentation site in minutes with our simple setup process.",
+      "button": "Read the Docs"
+    }
+  }
+}

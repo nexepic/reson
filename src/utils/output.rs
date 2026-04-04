@@ -1,20 +1,30 @@
+use crate::models::detection_types::DuplicateReportXML;
+use quick_xml::se::to_string;
+use serde::Serialize;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use serde::Serialize;
-use quick_xml::se::to_string;
-use crate::models::detection_types::DuplicateReportXML;
 
 /// Write output in JSON or other formats
-pub fn write_output<T: Serialize>(results: &T, output_format: &str, output_file: Option<&Path>) -> Result<(), std::io::Error> {
+pub fn write_output<T: Serialize>(
+    results: &T,
+    output_format: &str,
+    output_file: Option<&Path>,
+) -> Result<(), std::io::Error> {
     let output = match output_format {
         "json" => serde_json::to_string_pretty(results)?,
         "xml" => {
             // Wrap results in a root element with a name
             let wrapped = DuplicateReportXML { items: results };
-            to_string(&wrapped).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?
+            to_string(&wrapped)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?
         }
-        _ => return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput, "Unsupported format")),
+        _ => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Unsupported format",
+            ))
+        }
     };
 
     if let Some(file_path) = output_file {
@@ -30,10 +40,10 @@ pub fn write_output<T: Serialize>(results: &T, output_format: &str, output_file:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
-    use tempfile;
-    use std::fs;
     use crate::models::detection_types::{DuplicateBlock, DuplicateReport};
+    use serde_json::json;
+    use std::fs;
+    use tempfile;
 
     #[test]
     fn test_write_output_json() {
@@ -52,29 +62,29 @@ mod tests {
         write_output(&results, output_format, output_file).unwrap();
 
         let written_content = fs::read_to_string(temp_file.path()).unwrap();
-        assert!(written_content.contains("f40bd2979a68336ba4862f08d3372ef5f8b369172b4c38bd9039031dce0a084b"));
+        assert!(written_content
+            .contains("f40bd2979a68336ba4862f08d3372ef5f8b369172b4c38bd9039031dce0a084b"));
     }
 
     #[test]
     fn test_write_output_xml() {
-        let results = vec![
-            DuplicateReport {
-                fingerprint: "f40bd2979a68336ba4862f08d3372ef5f8b369172b4c38bd9039031dce0a084b".to_string(),
-                line_count: 19,
-                blocks: vec![
-                    DuplicateBlock {
-                        start_line_number: 121,
-                        end_line_number: 139,
-                        source_file: "./rtos/file1.c".to_string(),
-                    },
-                    DuplicateBlock {
-                        start_line_number: 121,
-                        end_line_number: 139,
-                        source_file: "./rtos/file2.c".to_string(),
-                    },
-                ],
-            },
-        ];
+        let results = vec![DuplicateReport {
+            fingerprint: "f40bd2979a68336ba4862f08d3372ef5f8b369172b4c38bd9039031dce0a084b"
+                .to_string(),
+            line_count: 19,
+            blocks: vec![
+                DuplicateBlock {
+                    start_line_number: 121,
+                    end_line_number: 139,
+                    source_file: "./rtos/file1.c".to_string(),
+                },
+                DuplicateBlock {
+                    start_line_number: 121,
+                    end_line_number: 139,
+                    source_file: "./rtos/file2.c".to_string(),
+                },
+            ],
+        }];
 
         let temp_file = tempfile::NamedTempFile::new().unwrap();
         write_output(&results, "xml", Some(temp_file.path())).unwrap();

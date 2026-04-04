@@ -1,6 +1,9 @@
-use std::cell::RefCell;
 use crate::models::code_types::{CodeBlock, CodeBlockNode, CodeBlockRef};
+use crate::parser::ast_collection::{collect_ast_content, compute_ast_fingerprint};
+use crate::parser::ast_node::should_skip_node;
 use crate::utils::language_mapping::get_language_from_extension;
+use reson::TREE_PARSING_MAX_DEPTH;
+use std::cell::RefCell;
 use std::fs;
 use std::rc::{Rc, Weak};
 use tree_sitter::{Language, Parser, Tree};
@@ -9,12 +12,9 @@ use tree_sitter_cpp::language as cpp_language;
 use tree_sitter_go::language as go_language;
 use tree_sitter_java::language as java_language;
 use tree_sitter_javascript::language as javascript_language;
-use tree_sitter_typescript::language_typescript as typescript_language;
 use tree_sitter_python::language as python_language;
 use tree_sitter_rust::language as rust_language;
-use reson::TREE_PARSING_MAX_DEPTH;
-use crate::parser::ast_node::should_skip_node;
-use crate::parser::ast_collection::{collect_ast_content, compute_ast_fingerprint};
+use tree_sitter_typescript::language_typescript as typescript_language;
 
 pub fn set_parser_language(parser: &mut Parser, language: &str) -> Result<(), String> {
     let language: Language = match language {
@@ -29,19 +29,29 @@ pub fn set_parser_language(parser: &mut Parser, language: &str) -> Result<(), St
         _ => return Err("Unsupported file extension".to_string()),
     };
 
-    parser.set_language(language).map_err(|_| "Failed to set language".to_string())
+    parser
+        .set_language(language)
+        .map_err(|_| "Failed to set language".to_string())
 }
 
-pub fn parse_file(file_path: &std::path::Path, threshold: usize) -> Result<(Vec<CodeBlockRef>, Tree, String), String> {
+pub fn parse_file(
+    file_path: &std::path::Path,
+    threshold: usize,
+) -> Result<(Vec<CodeBlockRef>, Tree, String), String> {
     let source_code = fs::read_to_string(file_path).map_err(|_| "Failed to read file")?;
     let mut parser = Parser::new();
 
-    let extension = file_path.extension().and_then(|ext| ext.to_str()).ok_or("Unsupported file extension")?;
+    let extension = file_path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .ok_or("Unsupported file extension")?;
     let language = get_language_from_extension(extension).ok_or("Unsupported file extension")?;
 
     set_parser_language(&mut parser, &language)?;
 
-    let tree = parser.parse(&source_code, None).ok_or("Failed to parse code")?;
+    let tree = parser
+        .parse(&source_code, None)
+        .ok_or("Failed to parse code")?;
     let code_blocks = extract_code_blocks(tree.clone(), &source_code, threshold);
 
     Ok((code_blocks, tree, source_code))
@@ -51,7 +61,15 @@ pub fn extract_code_blocks(tree: Tree, source: &str, threshold: usize) -> Vec<Co
     let mut cursor = tree.walk();
     let mut code_blocks = Vec::new();
 
-    traverse_tree(&mut cursor, source, &mut code_blocks, threshold, 0, TREE_PARSING_MAX_DEPTH, None);
+    traverse_tree(
+        &mut cursor,
+        source,
+        &mut code_blocks,
+        threshold,
+        0,
+        TREE_PARSING_MAX_DEPTH,
+        None,
+    );
 
     code_blocks
 }
@@ -83,15 +101,27 @@ fn traverse_tree(
             if line_count >= threshold {
                 if should_skip_node(&node, source) {
                     log::debug!("Skipping node at lines {}-{}", start_line, end_line);
-                    return;
+                    if !cursor.goto_next_sibling() {
+                        break;
+                    }
+                    continue;
                 }
 
                 let (ast_representation, ast_lines) = collect_ast_content(node, source);
                 let fingerprint = if ast_representation.is_empty() {
-                    log::debug!("No AST representation found for node at lines {}-{}", start_line, end_line);
+                    log::debug!(
+                        "No AST representation found for node at lines {}-{}",
+                        start_line,
+                        end_line
+                    );
                     "blank_ast".to_string()
                 } else {
-                    log::debug!("Computing fingerprint for node at lines {}-{}, AST lines: {}", start_line, end_line, ast_lines);
+                    log::debug!(
+                        "Computing fingerprint for node at lines {}-{}, AST lines: {}",
+                        start_line,
+                        end_line,
+                        ast_lines
+                    );
                     compute_ast_fingerprint(&ast_representation)
                 };
 
@@ -112,7 +142,15 @@ fn traverse_tree(
                 code_blocks.push(node_ref.clone());
 
                 if cursor.goto_first_child() {
-                    traverse_tree(cursor, source, code_blocks, threshold, depth + 1, max_depth, Some(Rc::downgrade(&node_ref)));
+                    traverse_tree(
+                        cursor,
+                        source,
+                        code_blocks,
+                        threshold,
+                        depth + 1,
+                        max_depth,
+                        Some(Rc::downgrade(&node_ref)),
+                    );
                     cursor.goto_parent();
                 }
             }
@@ -152,8 +190,14 @@ mod tests {
 
     #[test]
     fn test_should_return_due_to_depth() {
-        assert!(should_return_due_to_depth(TREE_PARSING_MAX_DEPTH + 1, TREE_PARSING_MAX_DEPTH));
-        assert!(!should_return_due_to_depth(TREE_PARSING_MAX_DEPTH, TREE_PARSING_MAX_DEPTH));
+        assert!(should_return_due_to_depth(
+            TREE_PARSING_MAX_DEPTH + 1,
+            TREE_PARSING_MAX_DEPTH
+        ));
+        assert!(!should_return_due_to_depth(
+            TREE_PARSING_MAX_DEPTH,
+            TREE_PARSING_MAX_DEPTH
+        ));
     }
 
     #[test]
@@ -161,8 +205,12 @@ mod tests {
         // Mock data
         let source = "fn main() {}";
         let mut parser = Parser::new();
-        parser.set_language(tree_sitter_rust::language()).expect("Error loading Rust grammar");
-        let tree = parser.parse(source, None).expect("Error parsing source code");
+        parser
+            .set_language(tree_sitter_rust::language())
+            .expect("Error loading Rust grammar");
+        let tree = parser
+            .parse(source, None)
+            .expect("Error parsing source code");
         let mut cursor = tree.walk();
 
         // Mock code blocks vector
@@ -172,10 +220,55 @@ mod tests {
         let depth = TREE_PARSING_MAX_DEPTH + 1;
 
         // Call traverse_tree
-        traverse_tree(&mut cursor, source, &mut code_blocks, 1, depth, TREE_PARSING_MAX_DEPTH, None);
+        traverse_tree(
+            &mut cursor,
+            source,
+            &mut code_blocks,
+            1,
+            depth,
+            TREE_PARSING_MAX_DEPTH,
+            None,
+        );
 
         // Assert that no code blocks were added
         assert!(code_blocks.is_empty());
+    }
+
+    #[test]
+    fn test_skip_node_does_not_stop_sibling_traversal() {
+        let large_array_payload = std::iter::repeat_n("aaaaaaaaaa", 950)
+            .collect::<Vec<_>>()
+            .join(",");
+        let source = format!("\"{large_array_payload}\";\nfunction keep(){{return 1;}}");
+
+        let mut parser = Parser::new();
+        parser
+            .set_language(tree_sitter_javascript::language())
+            .expect("Error loading JavaScript grammar");
+        let tree = parser
+            .parse(&source, None)
+            .expect("Error parsing source code");
+        let mut cursor = tree.walk();
+        assert!(cursor.goto_first_child(), "Expected top-level child nodes");
+        let mut code_blocks: Vec<CodeBlockRef> = Vec::new();
+        traverse_tree(
+            &mut cursor,
+            &source,
+            &mut code_blocks,
+            1,
+            0,
+            TREE_PARSING_MAX_DEPTH,
+            None,
+        );
+        let has_second_line_block = code_blocks.iter().any(|block| {
+            let block = block.borrow();
+            block.code_block.start_line == 2
+        });
+
+        assert!(
+            has_second_line_block,
+            "Skipping a large node should not stop traversal for sibling nodes"
+        );
     }
 
     #[test]
