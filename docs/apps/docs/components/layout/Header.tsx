@@ -70,10 +70,16 @@ export function Header({
   const brandIconDefault = siteConfig.assets?.brand?.icon || siteConfig.brand?.icon
   const brandIconLight = siteConfig.assets?.brand?.iconLight || siteConfig.brand?.iconLight
   const brandIconDark = siteConfig.assets?.brand?.iconDark || siteConfig.brand?.iconDark
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
+  const getAssetPath = (path: string | undefined) => {
+    if (!path) return undefined
+    if (path.startsWith('http')) return path
+    return `${basePath}${path.startsWith('/') ? path : `/${path}`}`
+  }
   const brandIcon = resolvedTheme === 'dark'
-    ? brandIconDark || brandIconDefault || brandIconLight
-    : brandIconLight || brandIconDefault || brandIconDark
-  const brandLogo = siteConfig.assets?.brand?.logo || siteConfig.brand?.logo
+    ? getAssetPath(brandIconDark) || getAssetPath(brandIconDefault) || getAssetPath(brandIconLight)
+    : getAssetPath(brandIconLight) || getAssetPath(brandIconDefault) || getAssetPath(brandIconDark)
+  const brandLogo = getAssetPath(siteConfig.assets?.brand?.logo || siteConfig.brand?.logo)
 
   // Global keyboard shortcut for search
   useEffect(() => {
