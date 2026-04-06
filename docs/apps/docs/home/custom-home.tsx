@@ -298,9 +298,8 @@ export function CustomHomePage({ locale, firstDocHref, jsonLd }: HomePageProps) 
         {/* Background Network Animation */}
         <DataFlowCanvas />
 
-        {/* Global Overlays: Grid + Vignette */}
+        {/* Global Overlays: Grid */}
         <div className="pointer-events-none absolute inset-0 z-[1] cyber-grid-overlay" />
-        <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(circle_at_50%_50%,transparent_20%,#0b0f14_100%)] opacity-90" />
 
         <main className="pointer-events-auto relative z-[2] flex h-full w-full flex-col items-center justify-center p-6 md:p-12">
           
