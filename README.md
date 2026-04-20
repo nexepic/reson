@@ -1,8 +1,8 @@
 <p align="center">
     <a href="https://nexepic.github.io/reson">
         <picture>
-            <source srcset="./docs/apps/docs/public/assets/brand/icon-light.svg" media="(prefers-color-scheme: dark)">
-            <img src="./docs/apps/docs/public/assets/brand/icon.svg" alt="icon" width="120" />
+            <source srcset="./assets/branding/icon-light.svg" media="(prefers-color-scheme: dark)">
+            <img src="./assets/branding/icon.svg" alt="icon" width="120" />
         </picture>
     </a>
 </p>

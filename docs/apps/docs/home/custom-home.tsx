@@ -1,277 +1,45 @@
 "use client"
 
 import Link from 'next/link'
-import { useEffect, useMemo, useRef } from 'react'
-import { Network, ShieldCheck, Zap } from 'lucide-react'
 import type { HomePageProps } from '@/components/home/HomePage'
 import { siteConfig } from '@/lib/site'
 
 const content = {
   en: {
-    badge: 'Code Duplication Detection',
+    system: 'AST_ANALYSIS::DUPLICATION_DETECT',
     title: 'Reson',
-    subtitle:
-      'A fast, structure-aware code duplication detection system. Uncovering redundant logic through precise AST pattern matching.',
-    start: 'Enter Docs',
-    repo: 'GitHub',
-    cards: [
-      {
-        title: 'Structure-Level Precision',
-        desc: 'AST structure matching suppresses text-level noise and false positives.',
-        icon: ShieldCheck,
-      },
-      {
-        title: 'Cross-Language',
-        desc: 'One unified workflow for C/C++, Java, JS/TS, Python, Go, and Rust.',
-        icon: Network,
-      },
-      {
-        title: 'High Throughput',
-        desc: 'Parallel scanning engineered for large-scale repositories and CI refactoring pipelines.',
-        icon: Zap,
-      },
+    subtitle: 'Structure-aware code duplication detection. Precise AST pattern matching across multi-language repositories.',
+    start: 'Documentation',
+    repo: 'Source',
+    metrics: [
+      { value: 'Multi', label: 'Language' },
+      { value: 'AST', label: 'Structural' },
+      { value: 'Fast', label: 'Throughput' },
+    ],
+    features: [
+      { idx: '01', key: 'STRUCT_MATCH', desc: 'AST-level pattern analysis. Zero sensitivity to formatting, comments, or naming variance.' },
+      { idx: '02', key: 'LANG_COVERAGE', desc: 'C/C++ · Java · JS/TS · Python · Go · Rust — single unified detection pipeline.' },
+      { idx: '03', key: 'SCAN_ENGINE', desc: 'Parallel architecture for monorepo-scale codebases. Native CI/CD integration.' },
     ],
   },
   zh: {
-    badge: '结构化重复检测',
+    system: 'AST_ANALYSIS::DUPLICATION_DETECT',
     title: 'Reson',
-    subtitle: '面向现代工程团队的 AST 代码重复检测工具。它关注语法结构而非文本相似度，让冗余逻辑更容易被准确定位。',
+    subtitle: '面向现代工程团队的 AST 代码重复检测。关注语法结构而非文本相似度，准确定位冗余逻辑。',
     start: '进入文档',
-    repo: 'GitHub',
-    cards: [
-      {
-        title: '结构级精度',
-        desc: '基于 AST 的结构匹配有效降低注释、格式差异带来的噪声，减少误报，结果更可用。',
-        icon: ShieldCheck,
-      },
-      {
-        title: '多语言一致体验',
-        desc: '一套工作流覆盖 C/C++、Java、JS/TS、Python、Go、Rust，跨仓库治理更顺手。',
-        icon: Network,
-      },
-      {
-        title: '面向大仓库性能',
-        desc: '并行扫描设计可稳定处理大型代码库，适合日常 CI 检查与重构前评估。',
-        icon: Zap,
-      },
+    repo: '源码',
+    metrics: [
+      { value: 'Multi', label: '多语言' },
+      { value: 'AST', label: '结构分析' },
+      { value: 'Fast', label: '高吞吐' },
+    ],
+    features: [
+      { idx: '01', key: 'STRUCT_MATCH', desc: 'AST 级模式分析。对格式差异、注释内容、命名变化零敏感。' },
+      { idx: '02', key: 'LANG_COVERAGE', desc: 'C/C++ · Java · JS/TS · Python · Go · Rust — 统一检测管线。' },
+      { idx: '03', key: 'SCAN_ENGINE', desc: '并行架构适配单仓级代码库。原生 CI/CD 集成。' },
     ],
   },
 } as const
-
-function DataFlowCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d', { alpha: false })
-    if (!ctx) return
-
-    let width = 0
-    let height = 0
-    let dpr = 1
-
-    interface Node {
-      x: number
-      y: number
-      vx: number
-      vy: number
-      radius: number
-      baseAlpha: number
-    }
-
-    interface Edge {
-      source: Node
-      target: Node
-      activePhase: number
-    }
-
-    interface Packet {
-      edge: Edge
-      dir: number
-      progress: number
-      speed: number
-      length: number
-    }
-
-    const nodes: Node[] = []
-    const edges: Edge[] = []
-    const packets: Packet[] = []
-
-    const resize = () => {
-      width = window.innerWidth
-      height = window.innerHeight
-      dpr = Math.min(window.devicePixelRatio || 1, 2)
-      canvas.width = width * dpr
-      canvas.height = height * dpr
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      initGraph()
-    }
-
-    const initGraph = () => {
-      nodes.length = 0
-      edges.length = 0
-      packets.length = 0
-
-      const isMobile = width < 768
-      const nodeCount = isMobile ? 60 : 150
-
-      for (let i = 0; i < nodeCount; i++) {
-        nodes.push({
-          x: Math.random() * width,
-          y: Math.random() * height,
-          vx: (Math.random() - 0.5) * 0.4,
-          vy: (Math.random() - 0.5) * 0.4,
-          radius: Math.random() * 1.5 + 0.5,
-          baseAlpha: Math.random() * 0.5 + 0.1
-        })
-      }
-
-      for (let i = 0; i < nodeCount; i++) {
-        const dists = []
-        for (let j = i + 1; j < nodeCount; j++) {
-          const dx = nodes[i].x - nodes[j].x
-          const dy = nodes[i].y - nodes[j].y
-          dists.push({ j, d: dx * dx + dy * dy })
-        }
-        dists.sort((a, b) => a.d - b.d)
-        const connects = Math.floor(Math.random() * 2) + 2
-        for (let k = 0; k < connects && k < dists.length; k++) {
-          if (dists[k].d < 40000) {
-            edges.push({ source: nodes[i], target: nodes[dists[k].j], activePhase: Math.random() * Math.PI * 2 })
-          }
-        }
-      }
-    }
-
-    let animationId: number
-    let frame = 0
-
-    const render = () => {
-      frame++
-      
-      ctx.fillStyle = 'rgba(11, 15, 20, 0.3)'
-      ctx.fillRect(0, 0, width, height)
-
-      const scanY = (frame * 2.5) % height
-      const scanGrad = ctx.createLinearGradient(0, scanY - 40, 0, scanY)
-      scanGrad.addColorStop(0, 'rgba(148, 168, 190, 0)')
-      scanGrad.addColorStop(0.9, 'rgba(148, 168, 190, 0.08)')
-      scanGrad.addColorStop(1, 'rgba(231, 237, 245, 0.4)')
-      ctx.fillStyle = scanGrad
-      ctx.fillRect(0, scanY - 40, width, 40)
-
-      nodes.forEach((n) => {
-        n.x += n.vx
-        n.y += n.vy
-        if (n.x < 0 || n.x > width) n.vx *= -1
-        if (n.y < 0 || n.y > height) n.vy *= -1
-      })
-
-      const maxDist = width < 768 ? 120 : 180
-
-      ctx.lineWidth = 1
-      edges.forEach((e) => {
-        const dx = e.source.x - e.target.x
-        const dy = e.source.y - e.target.y
-        const dist = Math.hypot(dx, dy)
-
-        if (dist < maxDist) {
-          const alpha = (1 - dist / maxDist) * 0.3
-          const pulse = (Math.sin(frame * 0.03 + e.activePhase) + 1) * 0.5
-          ctx.strokeStyle = `rgba(107, 130, 156, ${alpha * (0.3 + pulse * 0.7)})`
-          ctx.beginPath()
-          ctx.moveTo(e.source.x, e.source.y)
-          ctx.lineTo(e.target.x, e.target.y)
-          ctx.stroke()
-
-          if (Math.random() < 0.003) {
-            packets.push({
-              edge: e,
-              dir: Math.random() > 0.5 ? 1 : -1,
-              progress: 0,
-              speed: 0.01 + Math.random() * 0.015,
-              length: 0.1 + Math.random() * 0.2
-            })
-          }
-        }
-      })
-
-      for (let i = packets.length - 1; i >= 0; i--) {
-        const p = packets[i]
-        p.progress += p.speed
-        if (p.progress >= 1 + p.length) {
-          packets.splice(i, 1)
-          continue
-        }
-
-        const sourceNode = p.dir === 1 ? p.edge.source : p.edge.target
-        const targetNode = p.dir === 1 ? p.edge.target : p.edge.source
-        const sx = sourceNode.x
-        const sy = sourceNode.y
-        const tx = targetNode.x
-        const ty = targetNode.y
-
-        const dx = tx - sx
-        const dy = ty - sy
-        
-        if (Math.hypot(dx, dy) > maxDist * 1.2) {
-          packets.splice(i, 1)
-          continue
-        }
-
-        const headProg = Math.min(1, p.progress)
-        const tailProg = Math.max(0, p.progress - p.length)
-
-        const hx = sx + dx * headProg
-        const hy = sy + dy * headProg
-        const tlx = sx + dx * tailProg
-        const tly = sy + dy * tailProg
-
-        const grad = ctx.createLinearGradient(tlx, tly, hx, hy)
-        grad.addColorStop(0, 'rgba(148, 168, 190, 0)')
-        grad.addColorStop(1, 'rgba(231, 237, 245, 0.9)')
-
-        ctx.beginPath()
-        ctx.moveTo(tlx, tly)
-        ctx.lineTo(hx, hy)
-        ctx.strokeStyle = grad
-        ctx.lineWidth = 2
-        ctx.lineCap = 'round'
-        ctx.stroke()
-
-        if (headProg < 1) {
-          ctx.beginPath()
-          ctx.arc(hx, hy, 2, 0, Math.PI * 2)
-          ctx.fillStyle = '#ffffff'
-          ctx.shadowBlur = 10
-          ctx.shadowColor = '#e7edf5'
-          ctx.fill()
-          ctx.shadowBlur = 0 
-        }
-      }
-
-      nodes.forEach((n) => {
-        ctx.beginPath()
-        ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(148, 168, 190, ${n.baseAlpha})`
-        ctx.fill()
-      })
-
-      animationId = requestAnimationFrame(render)
-    }
-
-    window.addEventListener('resize', resize)
-    resize()
-
-    return () => {
-      window.removeEventListener('resize', resize)
-      cancelAnimationFrame(animationId)
-    }
-  }, [])
-
-  return <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 z-0 mix-blend-screen" />
-}
 
 export function CustomHomePage({ locale, firstDocHref, jsonLd }: HomePageProps) {
   const isEn = locale === 'en-US' || locale === 'en'
@@ -280,95 +48,107 @@ export function CustomHomePage({ locale, firstDocHref, jsonLd }: HomePageProps) 
   return (
     <>
       <style jsx global>{`
-        @keyframes move-grid {
-          0% { background-position: 0 0; }
-          100% { background-position: 40px 40px; }
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+        @keyframes pulse-border {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 1; }
         }
-        .cyber-grid-overlay {
-          background-image: 
-            linear-gradient(to right, rgba(148, 168, 190, 0.05) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(148, 168, 190, 0.05) 1px, transparent 1px);
-          background-size: 40px 40px;
-          animation: move-grid 3s linear infinite;
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+        .feature-row:hover .feature-indicator {
+          animation: pulse-border 1.2s ease-in-out infinite;
+        }
+        .btn-cursor::after {
+          content: '_';
+          animation: blink 1s step-end infinite;
+          opacity: 0;
+          transition: opacity 150ms;
+        }
+        .btn-cursor:hover::after {
+          opacity: 1;
         }
       `}</style>
 
-      <div className="relative h-screen w-screen overflow-hidden bg-[#0b0f14] font-['Avenir_Next','Segoe_UI',system-ui,sans-serif] text-[#e7edf5] supports-[height:100dvh]:h-dvh">
-        
-        {/* Background Network Animation */}
-        <DataFlowCanvas />
+      <div className="relative h-screen w-screen overflow-hidden bg-[#0b0f14] font-[JetBrains_Mono,ui-monospace,monospace] text-[#e7edf5] supports-[height:100dvh]:h-dvh">
 
-        {/* Global Overlays: Grid + Vignette */}
-        <div className="pointer-events-none absolute inset-0 z-[1] cyber-grid-overlay" />
+        {/* Static background: grid + vignette */}
+        <div className="pointer-events-none absolute inset-0 z-[1]" style={{ backgroundImage: 'linear-gradient(to right, rgba(148,168,190,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,168,190,0.05) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
         <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(circle_at_50%_50%,transparent_20%,#0b0f14_100%)] opacity-90" />
 
-        <main className="pointer-events-auto relative z-[2] flex h-full w-full flex-col items-center justify-center p-6 md:p-12">
-          
-          <div className="flex w-full max-w-[1100px] flex-col items-center justify-center">
-            
-            <div className="mb-[1.2rem] inline-flex rounded-[50px] border border-[rgba(122,144,170,0.3)] bg-[rgba(22,30,39,0.4)] px-4 py-[0.48rem] text-[0.72rem] font-bold uppercase tracking-[0.2em] text-[#aec0d2] backdrop-blur-[4px] relative overflow-hidden">
-              <span className="absolute inset-0 bg-gradient-to-b from-[rgba(148,168,190,0.1)] to-transparent" />
-              {t.badge}
+        <main className="pointer-events-auto relative z-[2] flex h-full w-full flex-col items-center justify-center px-5 py-8 md:px-12">
+
+          <div className="flex w-full max-w-[860px] flex-col items-center gap-0">
+
+            {/* System identifier */}
+            <div className="mb-5 inline-flex items-center gap-2.5 rounded-[3px] border border-[rgba(107,130,156,0.2)] bg-[rgba(16,22,30,0.5)] px-3 py-1.5 backdrop-blur-sm">
+              <span className="relative inline-block h-[7px] w-[7px] rounded-full bg-[#94a8be]">
+                <span className="absolute inset-0 animate-ping rounded-full bg-[#94a8be] opacity-40" />
+              </span>
+              <span className="text-[0.62rem] font-medium uppercase tracking-[0.22em] text-[#7a90aa]">{t.system}</span>
             </div>
 
-            <h1 className="m-0 text-center text-[2.6rem] font-bold leading-[1.15] tracking-[0.02em] text-[#e7edf5] md:text-[clamp(3.2rem,4vw,4.5rem)]">
+            {/* Title */}
+            <h1 className="m-0 text-center text-[3.2rem] font-bold leading-[1] tracking-[-0.03em] text-[#e7edf5] md:text-[5rem]">
               {t.title}
             </h1>
 
-            <p className="mt-[1.2rem] max-w-[680px] text-center text-[1rem] leading-[1.65] text-[#8a9bb0] md:text-[1.1rem]">
+            {/* Subtitle */}
+            <p className="mt-5 max-w-[560px] text-center text-[0.82rem] font-normal leading-[1.75] text-[#7a90aa] md:text-[0.9rem]">
               {t.subtitle}
             </p>
 
-            {/* Matrix Cards closely integrated under the hero content */}
-            <div className="mt-12 mb-12 flex w-full flex-col gap-4 sm:grid sm:grid-cols-3 sm:gap-5 md:gap-6">
-              {t.cards.map((card) => {
-                const Icon = card.icon
-                return (
-                  <div
-                    key={card.title}
-                    className="relative flex flex-col overflow-hidden rounded-[12px] border border-[rgba(122,144,170,0.26)] bg-gradient-to-b from-[rgba(26,35,46,0.76)] to-[rgba(13,18,24,0.88)] p-5 backdrop-blur-xl md:p-6"
-                  >
-                    <div className="absolute left-0 right-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-[rgba(148,168,190,0.35)] to-transparent" />
-                    <div className="absolute bottom-8 left-0 top-8 w-[3px] bg-gradient-to-b from-transparent via-[rgba(107,130,156,0.25)] to-transparent" />
-
-                    <div className="mb-4 flex items-center gap-3 relative z-10">
-                      <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[8px] border border-[rgba(122,144,170,0.28)] bg-[rgba(122,144,170,0.12)] text-[#b8c7d6]">
-                        <Icon className="h-[18px] w-[18px]" />
-                      </div>
-                      <h3 className="m-0 text-[1.05rem] font-semibold tracking-[0.02em] text-[#e7edf5]">
-                        {card.title}
-                      </h3>
-                    </div>
-                    <p className="m-0 text-[0.9rem] leading-[1.7] text-[#9fb0c4] relative z-10">
-                      {card.desc}
-                    </p>
-                  </div>
-                )
-              })}
+            {/* Metrics strip */}
+            <div className="mt-8 flex items-stretch gap-0">
+              {t.metrics.map((m, i) => (
+                <div key={i} className="flex flex-col items-center gap-1.5 border-r border-[rgba(107,130,156,0.2)] px-7 last:border-r-0 md:px-10">
+                  <span className="text-[1.5rem] font-bold text-[#e7edf5] md:text-[1.8rem]">{m.value}</span>
+                  <span className="text-[0.58rem] uppercase tracking-[0.22em] text-[#6b829c]">{m.label}</span>
+                </div>
+              ))}
             </div>
 
-            <div className="flex w-full flex-col items-center justify-center gap-4 sm:flex-row">
+            {/* Separator */}
+            <div className="my-8 h-px w-full max-w-[520px] bg-gradient-to-r from-transparent via-[rgba(107,130,156,0.35)] to-transparent" />
+
+            {/* Feature rows */}
+            <div className="flex w-full max-w-[720px] flex-col gap-0 overflow-hidden rounded-[6px] border border-[rgba(107,130,156,0.15)] bg-[rgba(12,17,24,0.7)] backdrop-blur-sm">
+              {t.features.map((f, i) => (
+                <div
+                  key={f.key}
+                  className={`feature-row group relative flex items-center gap-4 px-5 py-3.5 transition-all duration-200 hover:bg-[rgba(148,168,190,0.06)] ${i < t.features.length - 1 ? 'border-b border-[rgba(107,130,156,0.1)]' : ''}`}
+                >
+                  <span className="feature-indicator absolute bottom-3 left-0 top-3 w-[2px] rounded-full bg-[#94a8be] opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+                  <span className="shrink-0 text-[0.6rem] tabular-nums text-[#4a5d72]">{f.idx}</span>
+                  <span className="inline-flex shrink-0 items-center rounded-[3px] border border-[rgba(148,168,190,0.12)] bg-[rgba(148,168,190,0.07)] px-2 py-0.5 text-[0.62rem] font-bold tracking-[0.14em] text-[#94a8be]">{f.key}</span>
+                  <span className="text-[0.78rem] leading-[1.55] text-[#7a90aa] transition-colors duration-200 group-hover:text-[#aec0d2]">{f.desc}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div className="mt-10 flex items-center gap-3">
               <Link
                 href={firstDocHref as any}
-                className="inline-flex w-full min-w-[180px] flex-1 sm:max-w-[200px] items-center justify-center gap-2 rounded-[8px] border border-[rgba(122,144,170,0.7)] bg-[rgba(35,48,63,0.6)] px-4 py-4 text-[1rem] font-medium text-[#e7edf5] no-underline backdrop-blur-[4px] transition-all duration-[250ms] hover:bg-[#778ea7] hover:text-[#0b0f14]"
+                className="btn-cursor inline-flex items-center gap-2 rounded-[4px] border border-[rgba(148,168,190,0.7)] bg-[rgba(148,168,190,0.14)] px-6 py-3 text-[0.8rem] font-medium tracking-[0.04em] text-[#e7edf5] no-underline backdrop-blur-sm transition-all duration-200 hover:border-[#94a8be] hover:bg-[rgba(148,168,190,0.25)] hover:shadow-[0_0_20px_rgba(148,168,190,0.12),inset_0_1px_0_rgba(148,168,190,0.15)]"
               >
                 {t.start}
-                <span aria-hidden="true">&rarr;</span>
               </Link>
-
               <a
                 href={siteConfig?.github || "https://github.com"}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex w-full min-w-[180px] flex-1 sm:max-w-[200px] items-center justify-center gap-2 rounded-[8px] border border-[rgba(122,144,170,0.3)] bg-[rgba(24,34,44,0.4)] px-4 py-4 text-[1rem] font-medium text-[#b8c7d6] no-underline backdrop-blur-[4px] transition-all duration-[250ms] hover:border-[rgba(122,144,170,0.6)] hover:bg-[rgba(26,35,46,0.9)] hover:text-[#e7edf5]"
+                className="inline-flex items-center gap-2 rounded-[4px] border border-[rgba(107,130,156,0.25)] bg-[rgba(16,22,30,0.4)] px-6 py-3 text-[0.8rem] font-medium tracking-[0.04em] text-[#7a90aa] no-underline backdrop-blur-sm transition-all duration-200 hover:border-[rgba(107,130,156,0.5)] hover:bg-[rgba(20,28,38,0.7)] hover:text-[#aec0d2]"
               >
-                {t.repo} ↗
+                {t.repo}
+                <span className="text-[0.7rem]">↗</span>
               </a>
             </div>
 
           </div>
         </main>
-        
+
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       </div>
     </>

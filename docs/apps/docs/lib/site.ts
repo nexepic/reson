@@ -16,6 +16,9 @@ export function getSiteUrl(): string {
 
   try {
     const url = new URL(raw)
+    if (url.pathname && url.pathname !== '/') {
+      return raw.replace(/\/$/, '')
+    }
     return url.origin
   } catch {
     return 'https://nexdoc.dev'
