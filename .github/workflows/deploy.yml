@@ -30,6 +30,8 @@ jobs:
         run: |
           cd docs/apps/docs
           bun run build:gh-pages
+        env:
+          NEXT_PUBLIC_SITE_URL: https://nexepic.github.io/reson
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

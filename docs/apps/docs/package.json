@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "bun run check:links && next build",
     "check:links": "node ./scripts/check-doc-links.mjs",
-    "build:gh-pages": "BASE_PATH=/reson bun run build",
+    "build:gh-pages": "BASE_PATH=/reson NEXT_PUBLIC_BASE_PATH=/reson bun run build",
     "start": "next start",
     "clean": "rm -rf .next .swc .content-collections tsconfig.tsbuildinfo",
     "lint": "next lint",
