@@ -7,7 +7,7 @@ import { useLocale } from 'next-intl'
 import { Menu, Search, X, Languages, Command, ChevronDown } from 'lucide-react'
 import { defaultLocale, localeNames, locales } from '@/lib/i18n'
 import { getDocByHref, hasLocalizedDoc } from '@/lib/docs'
-import { siteConfig } from '@/lib/site'
+import { siteConfig, withBasePath } from '@/lib/site'
 import { SearchDialog } from '@/components/search/SearchDialog'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { cn } from '@/lib/utils'
@@ -198,14 +198,14 @@ export function Header({
           )}
           <Link href={`/${locale || defaultLocale}` as any} className="flex min-w-0 items-center gap-2.5 transition-opacity hover:opacity-80">
             {brandIcon ? (
-              <img src={brandIcon} alt={`${brandAlt} icon`} className="h-7 w-7 object-contain" />
+              <img src={withBasePath(brandIcon)} alt={`${brandAlt} icon`} className="h-7 w-7 object-contain" />
             ) : (
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--text-primary)] text-[var(--bg-primary)]">
                 <Command className="h-4 w-4" />
               </div>
             )}
             {brandLogo ? (
-              <img src={brandLogo} alt={brandAlt} className="h-5 w-auto object-contain" />
+              <img src={withBasePath(brandLogo)} alt={brandAlt} className="h-5 w-auto object-contain" />
             ) : (
               <span
                 className="max-w-[340px] truncate whitespace-nowrap text-[16px] font-bold tracking-tight text-[var(--text-primary)] sm:max-w-[420px]"

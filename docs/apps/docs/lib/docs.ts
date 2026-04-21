@@ -8,6 +8,7 @@ interface RawDoc {
   description?: string
   category?: string
   order?: number
+  categoryOrder?: number
   project?: string
   projectLabel?: string
   projectDescription?: string
@@ -32,6 +33,7 @@ export interface DocRecord {
   description?: string
   category: string
   order: number
+  categoryOrder: number
   project: string
   projectLabel: string
   projectDescription?: string
@@ -77,28 +79,14 @@ const collator = new Intl.Collator(undefined, {
   sensitivity: 'base',
 })
 
-const categorySortPriority = new Map<string, number>([
-  ['Onboarding', 10],
-  ['入门', 10],
-  ['Setup', 11],
-  ['准备', 11],
-  ['Workflow', 12],
-  ['交付流程', 12],
-  ['Guide', 20],
-  ['指南', 20],
-  ['Advanced', 30],
-  ['进阶', 30],
-  ['Foundation', 40],
-  ['基础落地', 40],
-  ['Operations', 50],
-  ['运营治理', 50],
-  ['Core APIs', 70],
-  ['核心 API', 70],
-  ['Hooks', 80],
-])
-
-function getCategoryPriority(category: string): number {
-  return categorySortPriority.get(category) ?? 999
+function buildCategoryPriorityMap(records: DocRecord[]): Map<string, number> {
+  const map = new Map<string, number>()
+  for (const doc of records) {
+    const key = `${doc.project}::${doc.category}`
+    const current = map.get(key) ?? 9999
+    map.set(key, Math.min(current, doc.categoryOrder))
+  }
+  return map
 }
 
 function isLocale(value: string): value is Locale {
@@ -201,6 +189,7 @@ function toDocRecord(raw: RawDoc): DocRecord | null {
     description: raw.description,
     category: raw.category || 'General',
     order: raw.order ?? 9999,
+    categoryOrder: raw.categoryOrder ?? 9999,
     project: project.key,
     projectLabel: project.label,
     projectDescription: project.description,
@@ -216,6 +205,12 @@ const docs: DocRecord[] = (allDocs as RawDoc[])
   .map(toDocRecord)
   .filter((item): item is DocRecord => item !== null)
 
+const categoryPriorityMap = buildCategoryPriorityMap(docs)
+
+function getCategoryPriority(project: string, category: string): number {
+  return categoryPriorityMap.get(`${project}::${category}`) ?? 9999
+}
+
 function compareDocs(a: DocRecord, b: DocRecord): number {
   if (a.projectOrder !== b.projectOrder) {
     return a.projectOrder - b.projectOrder
@@ -225,7 +220,7 @@ function compareDocs(a: DocRecord, b: DocRecord): number {
     return collator.compare(a.project, b.project)
   }
 
-  const categoryOrderDiff = getCategoryPriority(a.category) - getCategoryPriority(b.category)
+  const categoryOrderDiff = getCategoryPriority(a.project, a.category) - getCategoryPriority(b.project, b.category)
   if (categoryOrderDiff !== 0) {
     return categoryOrderDiff
   }
@@ -347,7 +342,7 @@ export function getProjectGroups(localeInput: string): ProjectGroup[] {
           items: sortNavItems(category.items),
         }))
         .sort((a, b) => {
-          const categoryOrderDiff = getCategoryPriority(a.title) - getCategoryPriority(b.title)
+          const categoryOrderDiff = getCategoryPriority(project.key, a.title) - getCategoryPriority(project.key, b.title)
           if (categoryOrderDiff !== 0) {
             return categoryOrderDiff
           }

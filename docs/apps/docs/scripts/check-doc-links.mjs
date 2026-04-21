@@ -212,14 +212,89 @@ function validateInternalHref({ href, file, line, locale, currentSlug, locales, 
   }
 }
 
+function isQuoted(value) {
+  return (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  )
+}
+
+function parseSimpleYaml(yamlStr) {
+  // Minimal YAML parser for flat key-value frontmatter.
+  // Returns { data, errors } where errors lists parse problems.
+  const result = {}
+  const errors = []
+  const lines = yamlStr.split('\n')
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i]
+    const trimmed = rawLine.trim()
+
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue
+    }
+
+    const match = rawLine.match(/^(\s*)([A-Za-z0-9_-]+)\s*:\s*(.*)$/)
+    if (!match) {
+      continue
+    }
+
+    const indent = match[1].length
+    const key = match[2]
+    let value = match[3].trim()
+
+    // Skip multi-line block indicators
+    if (!value || value === '|' || value === '>') {
+      continue
+    }
+
+    // Detect unquoted values that YAML would misparse
+    if (!isQuoted(value)) {
+      // Trailing colon creates a nested mapping
+      if (value.endsWith(':')) {
+        errors.push({ line: i + 1, key, reason: 'ends with ":" which creates a nested mapping — quote the value' })
+        continue
+      }
+
+      // Colon followed by space creates a nested mapping
+      if (/:\s/.test(value)) {
+        errors.push({ line: i + 1, key, reason: 'contains ":" followed by space which creates a nested mapping — quote the value' })
+        continue
+      }
+
+      // List syntax
+      if (/^- /.test(value)) {
+        errors.push({ line: i + 1, key, reason: 'starts with "- " which creates a list — quote the value' })
+        continue
+      }
+
+      // Flow collection syntax
+      if (/^\[.*\]$/.test(value) || /^\{.*\}$/.test(value)) {
+        // These are valid YAML, skip
+      } else if (/^\[/.test(value) || /^\{/.test(value)) {
+        errors.push({ line: i + 1, key, reason: 'starts with flow collection syntax — quote the value' })
+        continue
+      }
+    }
+
+    result[key] = value
+  }
+
+  return { data: result, errors }
+}
+
 function checkFrontmatterSanity({ locales, errors }) {
-  const keysNeedingQuotedColon = new Set([
-    'title',
-    'description',
-    'category',
-    'projectLabel',
-    'projectDescription',
-  ])
+  const ccGeneratedPath = path.join(cwd, '.content-collections', 'generated', 'allDocs.js')
+  let ccSlugs = null
+
+  // Try to cross-reference with content-collections generated output
+  if (fs.existsSync(ccGeneratedPath)) {
+    const ccContent = fs.readFileSync(ccGeneratedPath, 'utf8')
+    ccSlugs = new Set()
+    for (const match of ccContent.matchAll(/"path":\s*"([^"]+)"/g)) {
+      ccSlugs.add(match[1])
+    }
+  }
 
   for (const locale of locales) {
     const localeRoot = path.join(docsRoot, locale)
@@ -240,36 +315,25 @@ function checkFrontmatterSanity({ locales, errors }) {
         continue
       }
 
-      for (let i = 1; i < frontmatterEnd; i++) {
-        const rawLine = lines[i]
-        const trimmed = rawLine.trim()
+      const yamlStr = lines.slice(1, frontmatterEnd).join('\n')
+      const { errors: yamlErrors } = parseSimpleYaml(yamlStr)
 
-        if (!trimmed || trimmed.startsWith('#')) {
-          continue
-        }
+      for (const ye of yamlErrors) {
+        errors.push(`${file}:${ye.line} -> frontmatter "${ye.key}" ${ye.reason}`)
+      }
 
-        const match = rawLine.match(/^\s*([A-Za-z0-9_-]+)\s*:\s*(.*)$/)
-        if (!match) {
-          continue
-        }
-
-        const key = match[1]
-        const value = match[2].trim()
-        if (!keysNeedingQuotedColon.has(key)) {
-          continue
-        }
-
-        if (!value || value === '|' || value === '>') {
-          continue
-        }
-
-        const isQuoted =
-          (value.startsWith('"') && value.endsWith('"')) ||
-          (value.startsWith("'") && value.endsWith("'"))
-
-        if (!isQuoted && /:\s/.test(value)) {
+      // Cross-reference with content-collections output
+      if (ccSlugs) {
+        const rawSlug = path
+          .relative(localeRoot, file)
+          .replace(/\\/g, '/')
+          .replace(/\.mdx$/, '')
+        const ccSlug = `${locale}/${rawSlug}`
+        // content-collections strips /index suffix from paths
+        const ccSlugNoIndex = ccSlug.endsWith('/index') ? ccSlug.slice(0, -('/index'.length)) : null
+        if (!ccSlugs.has(ccSlug) && !(ccSlugNoIndex && ccSlugs.has(ccSlugNoIndex))) {
           errors.push(
-            `${file}:${i + 1} -> frontmatter "${key}" contains ":" and should be quoted`
+            `${file} -> exists on disk but is NOT in content-collections output (likely frontmatter parse error causes it to be silently skipped)`
           )
         }
       }

@@ -159,7 +159,7 @@ export function Mermaid({ chart, chartBase64, config, configBase64 }: MermaidPro
 
         await mermaid.parse(chartText)
         const graphId = `mermaid-${id}-${Date.now()}`
-        const { svg } = await mermaid.render(graphId, chartText)
+        const { svg } = await mermaid.render(graphId, chartText, containerRef.current)
         if (!active || !containerRef.current) {
           return
         }
